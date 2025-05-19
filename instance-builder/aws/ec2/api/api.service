@@ -1,0 +1,13 @@
+[Unit]
+Description=VLLM Server
+After=network.target
+
+[Service]
+ExecStart=/home/ubuntu/api --config /home/ubuntu/config.toml
+Restart=always
+User=ubuntu
+Group=ubuntu
+
+[Install]
+WantedBy=multi-user.target
+
