@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
-	log "github.com/heka-ai/benchmark-cli/internal/logs"
 	"github.com/heka-ai/benchmark-cli/pkg/results"
 )
 
@@ -17,8 +16,6 @@ type Client struct {
 	APIKey     string
 	httpClient *http.Client
 }
-
-var logger = log.GetLogger("cli_http")
 
 func NewClient(apiKey string) *Client {
 	httpClient := &http.Client{}
