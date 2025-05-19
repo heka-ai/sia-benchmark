@@ -1,4 +1,4 @@
-package config
+package apiConfig
 
 import (
 	"flag"
@@ -8,12 +8,13 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/go-playground/validator/v10"
 	"github.com/heka-ai/benchmark-api/internal/log"
+	config "github.com/heka-ai/benchmark-cli/pkg/config"
 	"github.com/spf13/viper"
 	"go.uber.org/fx"
 )
 
 type APIConfig struct {
-	config *Config
+	config *config.Config
 }
 
 var logger = log.GetLogger("config")
@@ -34,12 +35,12 @@ func NewAPIConfig() *APIConfig {
 	return apiConfig
 }
 
-func (c *APIConfig) GetConfig() *Config {
+func (c *APIConfig) GetConfig() *config.Config {
 	return c.config
 }
 
 // Init the config and validate it
-func Init() *Config {
+func Init() *config.Config {
 	InitFlags()
 
 	config := ReadConfig()
@@ -52,8 +53,8 @@ func InitFlags() {
 	flag.Parse()
 }
 
-func ReadConfig() *Config {
-	config := &Config{}
+func ReadConfig() *config.Config {
+	config := &config.Config{}
 	filename := flag.Lookup("config").Value.String()
 
 	viper.SetConfigName(filename)

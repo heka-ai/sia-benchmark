@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/heka-ai/benchmark-cli/internal/config"
+	"github.com/heka-ai/benchmark-cli/pkg/config"
 	"github.com/spf13/cobra"
 )
 

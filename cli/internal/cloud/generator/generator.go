@@ -5,8 +5,8 @@ import (
 
 	"github.com/heka-ai/benchmark-cli/internal/cloud"
 	"github.com/heka-ai/benchmark-cli/internal/cloud/aws"
-	"github.com/heka-ai/benchmark-cli/internal/config"
 	log "github.com/heka-ai/benchmark-cli/internal/logs"
+	"github.com/heka-ai/benchmark-cli/pkg/config"
 )
 
 var logger = log.GetLogger("cloud_generator")

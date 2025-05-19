@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/heka-ai/benchmark-api/internal/config"
+	apiConfig "github.com/heka-ai/benchmark-api/internal/config"
 	"github.com/heka-ai/benchmark-api/internal/log"
 	"github.com/heka-ai/benchmark-api/pkg/vllm"
 	"go.uber.org/fx"
@@ -17,14 +17,14 @@ type HttpServer struct {
 	router *gin.Engine
 
 	vllm   *vllm.VLLM
-	config *config.APIConfig
+	config *apiConfig.APIConfig
 }
 
 var HttpModule = fx.Module("http",
 	fx.Provide(NewHttpServer),
 )
 
-func NewHttpServer(lc fx.Lifecycle, vllm *vllm.VLLM, config *config.APIConfig) *HttpServer {
+func NewHttpServer(lc fx.Lifecycle, vllm *vllm.VLLM, config *apiConfig.APIConfig) *HttpServer {
 	server := &HttpServer{
 		vllm:   vllm,
 		config: config,

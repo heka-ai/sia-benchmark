@@ -1,7 +1,7 @@
 package cloud
 
 import (
-	"github.com/heka-ai/benchmark-cli/internal/config"
+	"github.com/heka-ai/benchmark-cli/pkg/config"
 )
 
 // Cloud is the interface for the different cloud providers

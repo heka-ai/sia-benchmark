@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	log "github.com/heka-ai/benchmark-cli/internal/logs"
-	"github.com/heka-ai/benchmark-cli/internal/results"
+	"github.com/heka-ai/benchmark-cli/pkg/results"
 )
 
 // This client follow the Sia Benchmark API

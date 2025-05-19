@@ -1,7 +1,7 @@
 package injection
 
 import (
-	"github.com/heka-ai/benchmark-api/internal/config"
+	apiConfig "github.com/heka-ai/benchmark-api/internal/config"
 	"github.com/heka-ai/benchmark-api/internal/log"
 	api_http "github.com/heka-ai/benchmark-api/internal/web"
 	"github.com/heka-ai/benchmark-api/pkg/vllm"
@@ -21,7 +21,7 @@ func NewAppInjector() *AppInjector {
 	app := fx.New(
 		fx.WithLogger(fxlogger.WithZerolog(log.GetMainLogger())),
 
-		config.ConfigFX,
+		apiConfig.ConfigFX,
 		api_http.HttpModule,
 		vllm.VLLMModule,
 

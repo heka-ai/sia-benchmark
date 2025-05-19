@@ -6,7 +6,7 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/heka-ai/benchmark-api/internal/config"
+	apiConfig "github.com/heka-ai/benchmark-api/internal/config"
 	"github.com/heka-ai/benchmark-api/internal/log"
 	"go.uber.org/fx"
 )
@@ -25,10 +25,10 @@ type VLLM struct {
 	doneCh  chan struct{}
 	waitCh  chan struct{}
 	running int64
-	config  *config.APIConfig
+	config  *apiConfig.APIConfig
 }
 
-func NewVLLM(lc fx.Lifecycle, config *config.APIConfig) *VLLM {
+func NewVLLM(lc fx.Lifecycle, config *apiConfig.APIConfig) *VLLM {
 	vllm := &VLLM{
 		args:    []string{},
 		doneCh:  make(chan struct{}),

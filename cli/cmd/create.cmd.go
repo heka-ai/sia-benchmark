@@ -2,7 +2,7 @@ package main
 
 import (
 	cloud_generator "github.com/heka-ai/benchmark-cli/internal/cloud/generator"
-	"github.com/heka-ai/benchmark-cli/internal/config"
+	"github.com/heka-ai/benchmark-cli/pkg/config"
 	"github.com/spf13/cobra"
 )
 
