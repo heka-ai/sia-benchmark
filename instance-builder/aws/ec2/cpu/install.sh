@@ -15,6 +15,6 @@ apt-get update && apt-get install -y \
 echo "Installing Python packages"
 
 # Install Python packages
-pip install -r requirements.txt  
+pip install -r /home/ubuntu/ec2/cpu/requirements.txt  
 
 echo "Installation complete"
