@@ -18,13 +18,13 @@ type Config struct {
 }
 
 type BenchmarkConfig struct {
-	Token       string `mapstructure:"token" validate:"required"`
-	DatasetName string `mapstructure:"dataset_name" validate:"required"`
-	DatasetPath string `mapstructure:"dataset_path" validate:"required"`
-	HFRevision  string `mapstructure:"hf_revision" validate:"required"`
-	HFSplit     string `mapstructure:"hf_split" validate:"required"`
-	NumPrompts  int    `mapstructure:"num_prompts" validate:"required"`
-	Seed        int    `mapstructure:"seed" validate:"required"`
+	Token       string `mapstructure:"token" json:"token" validate:"required"`
+	DatasetName string `mapstructure:"dataset_name" json:"dataset-name" validate:"required"`
+	DatasetPath string `mapstructure:"dataset_path" json:"dataset-path" validate:"required"`
+	HFRevision  string `mapstructure:"hf_revision" json:"hf-revision" validate:"required"`
+	HFSplit     string `mapstructure:"hf_split" json:"hf-split" validate:"required"`
+	NumPrompts  int    `mapstructure:"num_prompts" json:"num-prompts" validate:"required"`
+	Seed        int    `mapstructure:"seed" json:"seed" validate:"required"`
 }
 
 type VLLMConfig struct {
@@ -174,7 +174,7 @@ func GenerateVLLMCommand(vllmConfig *VLLMConfig) ([]string, error) {
 	json.Unmarshal(inrec, &inInterface)
 
 	for k, v := range inInterface {
-		if k == "model" {
+		if k == "Model" {
 			continue
 		}
 
@@ -202,6 +202,48 @@ func GenerateVLLMCommand(vllmConfig *VLLMConfig) ([]string, error) {
 
 		logger.Warn().Str("key", k).Interface("value", v).Msg("Unknown type")
 	}
+
+	return localArgs, nil
+}
+
+func GenerateBenchmarkCommand(conf *Config, ip string) ([]string, error) {
+	localArgs := []string{"/home/ubuntu/ec2/cpu/benchmark.py", fmt.Sprintf("--base-url http://%s:8000", ip)}
+
+	var inInterface map[string]interface{}
+	inrec, _ := json.Marshal(conf.BenchmarkConfig)
+	json.Unmarshal(inrec, &inInterface)
+
+	for k, v := range inInterface {
+		if v == nil || v == "" {
+			continue
+		}
+
+		if k == "token" {
+			continue
+		}
+
+		s, ok := v.(string)
+		if ok {
+			localArgs = append(localArgs, fmt.Sprintf("--%s", k), s)
+			continue
+		}
+
+		number, ok := v.(float64)
+		if ok {
+			localArgs = append(localArgs, fmt.Sprintf("--%s", k), strconv.FormatFloat(number, 'f', 0, 64))
+			continue
+		}
+
+		b, ok := v.(bool)
+		if ok {
+			localArgs = append(localArgs, fmt.Sprintf("--%s", k), strconv.FormatBool(b))
+			continue
+		}
+
+		logger.Warn().Str("key", k).Interface("value", v).Msg("Unknown type")
+	}
+
+	localArgs = append(localArgs, "--model", conf.VLLMConfig.Model)
 
 	return localArgs, nil
 }

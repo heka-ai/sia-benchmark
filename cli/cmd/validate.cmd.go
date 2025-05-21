@@ -23,17 +23,24 @@ func ValidateCmd() *cobra.Command {
 				return
 			}
 
-			ValidateExec(vllmModel)
+			benchmarkModel, err := cmd.Flags().GetBool("benchmark-command")
+			if err != nil {
+				logger.Error().Err(err).Msg("Error getting the benchmark model")
+				return
+			}
+
+			ValidateExec(vllmModel, benchmarkModel)
 		},
 	}
 
 	cmd.Flags().Bool("vllm-command", false, "The model to use for the VLLM command")
+	cmd.Flags().Bool("benchmark-command", false, "The model to use for the benchmark command")
 
 	return cmd
 }
 
 // This only validate that the TOML config file is valid
-func ValidateExec(vllmModel bool) {
+func ValidateExec(vllmModel bool, benchmarkModel bool) {
 	logger.Info().Msg("Validating the config file")
 	config.Init()
 
@@ -47,5 +54,17 @@ func ValidateExec(vllmModel bool) {
 		}
 
 		logger.Info().Str("command", "vllm "+strings.Join(localArgs, " ")).Msg("VLLM command generated for your config")
+	}
+
+	if benchmarkModel {
+		cfg := config.GetConfig()
+
+		localArgs, err := config.GenerateBenchmarkCommand(&cfg, "127.0.0.1")
+		if err != nil {
+			logger.Error().Err(err).Msg("Error generating the benchmark command")
+			return
+		}
+
+		logger.Info().Str("command", "/opt/pytorch/bin/python3 "+strings.Join(localArgs, " ")).Msg("Benchmark command generated for your config")
 	}
 }
