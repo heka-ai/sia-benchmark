@@ -14,6 +14,12 @@ type Cloud interface {
 	// Create the two instances needed for the benchmark
 	Create() error
 
+	// Create the LLM instance
+	CreateLLMInstance() error
+
+	// Create the CPU instance
+	CreateBenchInstance() error
+
 	// Destroy the instances
 	Destroy() error
 
