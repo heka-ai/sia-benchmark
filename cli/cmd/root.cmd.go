@@ -19,6 +19,7 @@ func RootCmd() *cobra.Command {
 	rootCmd.AddCommand(BenchCmd())
 	rootCmd.AddCommand(ResultsCmd())
 	rootCmd.AddCommand(DestroyCmd())
+	rootCmd.AddCommand(InstanceBuildCmd())
 
 	rootCmd.Flags().StringP("config", "c", "bench.toml", "Path to the config file")
 

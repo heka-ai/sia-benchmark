@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/heka-ai/benchmark-cli/pkg/results"
@@ -23,6 +24,32 @@ func NewClient(apiKey string) *Client {
 		APIKey:     apiKey,
 		httpClient: httpClient,
 	}
+}
+
+const (
+	waitInterval  = 1 * time.Second
+	maxIterations = 100
+)
+
+func (c *Client) WaitForInstances(benchIP, llmIP string) error {
+	cpuDone := false
+	llmDone := false
+
+	for i := 0; i < maxIterations && (!cpuDone || !llmDone); i++ {
+		err := c.HealthCheck(benchIP)
+		if err == nil {
+			cpuDone = true
+		}
+
+		err = c.HealthCheck(llmIP)
+		if err == nil {
+			llmDone = true
+		}
+
+		time.Sleep(waitInterval)
+	}
+
+	return fmt.Errorf("instances are not running after %d iterations", maxIterations)
 }
 
 // deploy the model on the instance
@@ -70,6 +97,22 @@ func (c *Client) HealthCheck(ip string) error {
 	}
 
 	return nil
+}
+
+func (c *Client) WaitForLLM(ip string) error {
+	done := false
+
+	for i := 0; i < maxIterations && !done; i++ {
+		done, _ := c.ModelStatus(ip)
+
+		if done {
+			return nil
+		}
+
+		time.Sleep(waitInterval)
+	}
+
+	return fmt.Errorf("LLM is not ready after %d iterations", maxIterations)
 }
 
 func (c *Client) ModelStatus(ip string) (bool, error) {
