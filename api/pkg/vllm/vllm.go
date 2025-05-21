@@ -5,9 +5,11 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"strings"
 
 	apiConfig "github.com/heka-ai/benchmark-api/internal/config"
 	"github.com/heka-ai/benchmark-api/internal/log"
+	cliConfig "github.com/heka-ai/benchmark-cli/pkg/config"
 	"go.uber.org/fx"
 )
 
@@ -47,10 +49,14 @@ func NewVLLM(lc fx.Lifecycle, config *apiConfig.APIConfig) *VLLM {
 func (v *VLLM) Start(ctx context.Context) error {
 	logger.Info().Str("model", v.config.GetConfig().VLLMConfig.Model).Str("token", v.config.GetConfig().BenchmarkConfig.Token).Msg("Starting the VLLM service")
 
-	localArgs := []string{"serve", v.config.GetConfig().VLLMConfig.Model}
+	localArgs, err := cliConfig.GenerateVLLMCommand(v.config.GetConfig().VLLMConfig)
+	if err != nil {
+		return err
+	}
+
+	logger.Info().Str("command", "vllm "+strings.Join(localArgs, " ")).Msg("Launching VLLM with the following command")
 
 	v.cmd = exec.CommandContext(ctx, PATH_TO_VLLM, localArgs...)
-
 	v.cmd.Env = append(os.Environ(), "HF_TOKEN="+v.config.GetConfig().BenchmarkConfig.Token)
 
 	stdout, err := v.cmd.StdoutPipe()

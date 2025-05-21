@@ -50,6 +50,7 @@ require (
 
 require (
 	github.com/aws/aws-sdk-go-v2/service/iam v1.42.0
+	github.com/fatih/structs v1.1.0
 	github.com/go-playground/validator/v10 v10.26.0
 	github.com/google/uuid v1.6.0
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect

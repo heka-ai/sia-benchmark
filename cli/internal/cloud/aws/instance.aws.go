@@ -145,6 +145,15 @@ func (c *AWSClient) CreateTemplateInstance(installType string) error {
 		return err
 	}
 
+	imageAvailableWaiter := ec2.NewImageAvailableWaiter(c.svc)
+
+	err = imageAvailableWaiter.Wait(context.TODO(), &ec2.DescribeImagesInput{
+		ImageIds: []string{*ami.ImageId},
+	}, 30*time.Minute)
+
+	if err != nil {
+		return err
+	}
 	logger.Info().Str("amiId", *ami.ImageId).Msg("AMI created")
 
 	return nil
