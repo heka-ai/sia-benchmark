@@ -3,9 +3,12 @@ package ssh
 import (
 	"net"
 
+	log "github.com/heka-ai/benchmark-cli/internal/logs"
 	"github.com/melbahja/goph"
 	"golang.org/x/crypto/ssh"
 )
+
+var logger = log.GetLogger("ssh")
 
 type SSHClient struct {
 	Host    string
@@ -21,11 +24,11 @@ func NewSSHClient(keyPath string, host string, user string) *SSHClient {
 	}
 }
 
-func (c *SSHClient) Run(command string) (string, error) {
+func (c *SSHClient) Run(command string) error {
 	auth, err := goph.Key(c.KeyPath, "")
 
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	client, err := goph.NewConn(&goph.Config{
@@ -39,7 +42,7 @@ func (c *SSHClient) Run(command string) (string, error) {
 	})
 
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	// Defer closing the network connection.
@@ -48,9 +51,11 @@ func (c *SSHClient) Run(command string) (string, error) {
 	// Execute your command.
 	out, err := client.Run(command)
 
+	logger.Debug().Str("command", command).Msgf("Executed command %s", out)
+
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	return string(out), nil
+	return nil
 }
