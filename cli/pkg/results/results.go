@@ -19,8 +19,8 @@ type Results struct {
 	TotalTokenThroughput float64      `json:"total_token_throughput" validate:"required"`
 	InputLens            []int        `json:"input_lens" validate:"required"`
 	OutputLens           []int        `json:"output_lens" validate:"required"`
-	Ttfts                []int        `json:"ttfts" validate:"required"`
-	Itls                 []int        `json:"itls" validate:"required"`
+	Ttfts                []float64    `json:"ttfts" validate:"required"`
+	Itls                 [][]float64  `json:"itls" validate:"required"`
 	GeneratedTexts       []string     `json:"generated_texts" validate:"required"`
 	Errors               []string     `json:"errors" validate:"required"`
 	MeanTtftMs           float64      `json:"mean_ttft_ms" validate:"required"`
@@ -76,18 +76,18 @@ type Dataset struct {
 }
 
 type Evaluation struct {
-	Id                  string             `json:"id" validate:"required"`
-	EvaluationModel     string             `json:"evaluation_model" validate:"required"`
-	PromptTemplate      string             `json:"prompt_template" validate:"required"`
-	TopK                int                `json:"top_k" validate:"required"`
-	ShowIndicator       bool               `json:"show_indicator" validate:"required"`
-	PrintResults        bool               `json:"print_results" validate:"required"`
-	WriteCache          bool               `json:"write_cache" validate:"required"`
-	UseCache            bool               `json:"use_cache" validate:"required"`
-	SkipOnMissingParams bool               `json:"skip_on_missing_params" validate:"required"`
-	VerboseMode         bool               `json:"verbose_mode" validate:"required"`
-	ThrottleValue       int                `json:"throttle_value" validate:"required"`
-	MetricsDesired      map[string]float64 `json:"metrics_desired" validate:"required"`
+	Id                  string             `json:"id" validate:""`
+	EvaluationModel     string             `json:"evaluation_model" validate:""`
+	PromptTemplate      *string            `json:"prompt_template" validate:""`
+	TopK                int                `json:"top_k" validate:""`
+	ShowIndicator       bool               `json:"show_indicator" validate:""`
+	PrintResults        bool               `json:"print_results" validate:""`
+	WriteCache          bool               `json:"write_cache" validate:""`
+	UseCache            bool               `json:"use_cache" validate:""`
+	SkipOnMissingParams bool               `json:"skip_on_missing_params" validate:""`
+	VerboseMode         bool               `json:"verbose_mode" validate:""`
+	ThrottleValue       int                `json:"throttle_value" validate:""`
+	MetricsDesired      map[string]float64 `json:"metrics_desired" validate:""`
 }
 
 type Result struct {
@@ -96,5 +96,5 @@ type Result struct {
 	ExpectedOutput []string    `json:"expected_output" validate:"required"`
 	ActualOutput   []string    `json:"actual_output" validate:"required"`
 	Itls           [][]float64 `json:"itls" validate:"required"`
-	Ttfts          [][]float64 `json:"ttfts" validate:"required"`
+	Ttfts          []float64   `json:"ttfts" validate:"required"`
 }
