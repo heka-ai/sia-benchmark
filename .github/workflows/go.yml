@@ -55,6 +55,6 @@ jobs:
           goarch: ${{ matrix.goarch }}
           goversion: "https://dl.google.com/go/go1.22.5.linux-amd64.tar.gz"
           project_path: "./api/cmd"
-          asset_name: ${{matrix.binary_name}}-${{matrix.goos}}-${{matrix.goarch}}
           binary_name: "api"
+          asset_name: ${{matrix.binary_name}}-${{matrix.goos}}-${{matrix.goarch}}
           extra_files: LICENSE README.md
