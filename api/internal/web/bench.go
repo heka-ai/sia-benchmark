@@ -46,6 +46,10 @@ func (s *HttpServer) generateBenchRouter(router *gin.Engine) {
 		c.JSON(http.StatusNotImplemented, gin.H{"status": "not implemented"})
 	})
 
+	benchRouter.GET("/vllm/logs", func(c *gin.Context) {
+		c.JSON(http.StatusNotImplemented, gin.H{"status": "not implemented"})
+	})
+
 	benchRouter.GET("/vllm/results", func(c *gin.Context) {
 		results, err := s.benchmark.GetResult()
 		if err != nil {

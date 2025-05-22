@@ -18,6 +18,7 @@ import (
 )
 
 var PATH_TO_PYTHON = "/opt/pytorch/bin/python3"
+var PATH_TO_RESULTS = "/home/ubuntu/metrics.json"
 
 var logger = log.GetLogger("benchmark")
 
@@ -60,7 +61,7 @@ func (b *Benchmark) Start(ip string) error {
 		return err
 	}
 
-	localArgs = append(localArgs, "--save_result", "true", "--result_filename", "/home/ubuntu/metrics.json")
+	localArgs = append(localArgs, "--save_result", "true", "--result_filename", PATH_TO_RESULTS)
 
 	b.cmd = exec.CommandContext(context.Background(), PATH_TO_PYTHON, localArgs...)
 	b.cmd.Env = append(os.Environ(), "HF_TOKEN="+b.config.GetConfig().BenchmarkConfig.Token)
@@ -102,7 +103,7 @@ func (b *Benchmark) Start(ip string) error {
 }
 
 func (b *Benchmark) GetResult() (*results.Results, error) {
-	file, err := os.Open("/home/ubuntu/metrics.json")
+	file, err := os.Open(PATH_TO_RESULTS)
 	if err != nil {
 		return nil, err
 	}
