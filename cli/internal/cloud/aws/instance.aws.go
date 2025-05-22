@@ -29,13 +29,13 @@ func (c *AWSClient) CreateTemplateInstance(installType string) error {
 		return err
 	}
 
-	// defer func() {
-	// 	logger.Debug().Str("keyName", keyPairName).Msg("Deleting the key pair")
-	// 	c.svc.DeleteKeyPair(context.TODO(), &ec2.DeleteKeyPairInput{
-	// 		KeyName: aws.String(keyPairName),
-	// 	})
-	// 	logger.Debug().Str("keyName", keyPairName).Msg("Key pair deleted from AWS")
-	// }()
+	defer func() {
+		logger.Debug().Str("keyName", keyPairName).Msg("Deleting the key pair")
+		c.svc.DeleteKeyPair(context.TODO(), &ec2.DeleteKeyPairInput{
+			KeyName: aws.String(keyPairName),
+		})
+		logger.Debug().Str("keyName", keyPairName).Msg("Key pair deleted from AWS")
+	}()
 
 	if keyPair.KeyMaterial == nil {
 		return fmt.Errorf("failed to create key pair")
@@ -48,10 +48,10 @@ func (c *AWSClient) CreateTemplateInstance(installType string) error {
 		return err
 	}
 
-	// defer func() {
-	// 	logger.Debug().Str("keyName", keyPairName).Msg("Deleting the key pair file")
-	// 	os.Remove(keyFile.Name())
-	// }()
+	defer func() {
+		logger.Debug().Str("keyName", keyPairName).Msg("Deleting the key pair file")
+		os.Remove(keyFile.Name())
+	}()
 
 	// write the key to the file
 	_, err = keyFile.WriteString(*keyPair.KeyMaterial)
@@ -85,13 +85,13 @@ func (c *AWSClient) CreateTemplateInstance(installType string) error {
 		},
 	})
 
-	// defer func() {
-	// 	logger.Debug().Str("instanceId", *instance.Instances[0].InstanceId).Msg("Terminating the instance")
-	// 	c.svc.TerminateInstances(context.TODO(), &ec2.TerminateInstancesInput{
-	// 		InstanceIds: []string{*instance.Instances[0].InstanceId},
-	// 	})
-	// 	logger.Debug().Str("instanceId", *instance.Instances[0].InstanceId).Msg("Instance terminated")
-	// }()
+	defer func() {
+		logger.Debug().Str("instanceId", *instance.Instances[0].InstanceId).Msg("Terminating the instance")
+		c.svc.TerminateInstances(context.TODO(), &ec2.TerminateInstancesInput{
+			InstanceIds: []string{*instance.Instances[0].InstanceId},
+		})
+		logger.Debug().Str("instanceId", *instance.Instances[0].InstanceId).Msg("Instance terminated")
+	}()
 
 	if err != nil {
 		return err
@@ -154,6 +154,7 @@ func (c *AWSClient) CreateTemplateInstance(installType string) error {
 	if err != nil {
 		return err
 	}
+
 	logger.Info().Str("amiId", *ami.ImageId).Msg("AMI created")
 
 	return nil
