@@ -2,8 +2,8 @@
 
 echo "Installing the API"
 
-curl -L https://github.com/heka-ai/sia-benchmark/releases/download/v0.1.0/api-v0.1.0-linux-amd64.tar.gz -o /tmp/api-v0.1.0-linux-amd64.tar.gz
-tar -xzf /tmp/api-v0.1.0-linux-amd64.tar.gz -C /home/ubuntu/
+curl -L https://github.com/heka-ai/sia-benchmark/releases/latest/download/api-linux-amd64.tar.gz -o /tmp/api-linux-amd64.tar.gz
+tar -xzf /tmp/api-linux-amd64.tar.gz -C /home/ubuntu/
 
 chmod +x /home/ubuntu/api
 
