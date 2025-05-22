@@ -3,8 +3,8 @@ on:
     types: [created]
 
 permissions:
-    contents: write
-    packages: write
+  contents: write
+  packages: write
 
 jobs:
   releases-cli-matrix:
@@ -21,17 +21,18 @@ jobs:
           - goarch: arm64
             goos: windows
     steps:
-    - uses: actions/checkout@v4
-    - uses: wangyoucao577/go-release-action@v1
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        goos: ${{ matrix.goos }}
-        goarch: ${{ matrix.goarch }}
-        goversion: "https://dl.google.com/go/go1.22.5.linux-amd64.tar.gz"
-        project_path: "./cli/cmd"
-        binary_name: "bench"
-        extra_files: LICENSE README.md
-        
+      - uses: actions/checkout@v4
+      - uses: wangyoucao577/go-release-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          goos: ${{ matrix.goos }}
+          goarch: ${{ matrix.goarch }}
+          goversion: "https://dl.google.com/go/go1.22.5.linux-amd64.tar.gz"
+          project_path: "./cli/cmd"
+          asset_name: ${BINARY_NAME}-${GOOS}-${GOARCH}
+          binary_name: "bench"
+          extra_files: LICENSE README.md
+
   releases-api-matrix:
     name: Release API Go Binary
     runs-on: ubuntu-latest
@@ -46,13 +47,14 @@ jobs:
           - goarch: arm64
             goos: windows
     steps:
-    - uses: actions/checkout@v4
-    - uses: wangyoucao577/go-release-action@v1
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        goos: ${{ matrix.goos }}
-        goarch: ${{ matrix.goarch }}
-        goversion: "https://dl.google.com/go/go1.22.5.linux-amd64.tar.gz"
-        project_path: "./api/cmd"
-        binary_name: "api"
-        extra_files: LICENSE README.md
+      - uses: actions/checkout@v4
+      - uses: wangyoucao577/go-release-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          goos: ${{ matrix.goos }}
+          goarch: ${{ matrix.goarch }}
+          goversion: "https://dl.google.com/go/go1.22.5.linux-amd64.tar.gz"
+          project_path: "./api/cmd"
+          asset_name: ${BINARY_NAME}-${GOOS}-${GOARCH}
+          binary_name: "api"
+          extra_files: LICENSE README.md
