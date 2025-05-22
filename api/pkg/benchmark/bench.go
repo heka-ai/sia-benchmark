@@ -3,13 +3,17 @@ package benchmark
 import (
 	"bufio"
 	"context"
+	"encoding/json"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
 
+	"github.com/go-playground/validator/v10"
 	apiConfig "github.com/heka-ai/benchmark-api/internal/config"
 	"github.com/heka-ai/benchmark-api/internal/log"
 	cliConfig "github.com/heka-ai/benchmark-cli/pkg/config"
+	"github.com/heka-ai/benchmark-cli/pkg/results"
 	"go.uber.org/fx"
 )
 
@@ -26,6 +30,11 @@ type Benchmark struct {
 
 	config *apiConfig.APIConfig
 }
+
+var BenchmarkModule = fx.Module("benchmark",
+	fx.Provide(NewBenchmark),
+	fx.Invoke(func(b *Benchmark) {}),
+)
 
 func NewBenchmark(lc fx.Lifecycle, config *apiConfig.APIConfig) *Benchmark {
 	benchmark := &Benchmark{
@@ -50,6 +59,8 @@ func (b *Benchmark) Start(ip string) error {
 	if err != nil {
 		return err
 	}
+
+	localArgs = append(localArgs, "--save_result", "true", "--result_filename", "/home/ubuntu/metrics.json")
 
 	b.cmd = exec.CommandContext(context.Background(), PATH_TO_PYTHON, localArgs...)
 	b.cmd.Env = append(os.Environ(), "HF_TOKEN="+b.config.GetConfig().BenchmarkConfig.Token)
@@ -88,6 +99,33 @@ func (b *Benchmark) Start(ip string) error {
 	}()
 
 	return nil
+}
+
+func (b *Benchmark) GetResult() (*results.Results, error) {
+	file, err := os.Open("/home/ubuntu/metrics.json")
+	if err != nil {
+		return nil, err
+	}
+
+	defer file.Close()
+
+	bytes, err := io.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	var results results.Results
+	if err := json.Unmarshal(bytes, &results); err != nil {
+		return nil, err
+	}
+
+	// validate
+	val := validator.New()
+	if err := val.Struct(results); err != nil {
+		return nil, err
+	}
+
+	return &results, nil
 }
 
 func (b *Benchmark) Stop() error {

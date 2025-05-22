@@ -27,7 +27,7 @@ func RunExec() {
 		logger.Fatal().Err(err).Msg("Cannot get the bench instance IP")
 	}
 
-	err = client.RunBenchmark(benchInstanceIP)
+	err = client.RunBenchmark(benchInstanceIP, c.InferenceEngine)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Cannot run benchmark on bench instance")
 	}

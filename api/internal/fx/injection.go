@@ -4,6 +4,7 @@ import (
 	apiConfig "github.com/heka-ai/benchmark-api/internal/config"
 	"github.com/heka-ai/benchmark-api/internal/log"
 	api_http "github.com/heka-ai/benchmark-api/internal/web"
+	"github.com/heka-ai/benchmark-api/pkg/benchmark"
 	"github.com/heka-ai/benchmark-api/pkg/vllm"
 	"github.com/ipfans/fxlogger"
 	"go.uber.org/fx"
@@ -24,6 +25,7 @@ func NewAppInjector() *AppInjector {
 		apiConfig.ConfigFX,
 		api_http.HttpModule,
 		vllm.VLLMModule,
+		benchmark.BenchmarkModule,
 
 		fx.Invoke(func(s *api_http.HttpServer) {}),
 	)

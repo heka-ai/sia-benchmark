@@ -143,8 +143,8 @@ func (c *Client) ModelStatus(ip string) (bool, error) {
 	return false, nil
 }
 
-func (c *Client) RunBenchmark(ip string) error {
-	request, err := http.NewRequest("POST", fmt.Sprintf("http://%s:8001/run", ip), nil)
+func (c *Client) RunBenchmark(ip string, engineType string) error {
+	request, err := http.NewRequest("POST", fmt.Sprintf("http://%s:8001/%s/start", ip, engineType), nil)
 	if err != nil {
 		return err
 	}
