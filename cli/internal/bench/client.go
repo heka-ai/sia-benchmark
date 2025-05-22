@@ -165,8 +165,8 @@ func (c *Client) RunBenchmark(ip string, engineType string) error {
 	return nil
 }
 
-func (c *Client) GetResults(ip string) (*results.Results, error) {
-	request, err := http.NewRequest("GET", fmt.Sprintf("http://%s:8001/results", ip), nil)
+func (c *Client) GetResults(ip string, engineType string) (*results.Results, error) {
+	request, err := http.NewRequest("GET", fmt.Sprintf("http://%s:8001/%s/results", ip, engineType), nil)
 	if err != nil {
 		return nil, err
 	}
