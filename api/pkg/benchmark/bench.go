@@ -30,7 +30,6 @@ type Benchmark struct {
 	running int64
 
 	logsArchive []string
-	logCh       chan string
 
 	config *apiConfig.APIConfig
 }
@@ -44,17 +43,12 @@ func (b *Benchmark) GetLogsArchive() []string {
 	return b.logsArchive
 }
 
-func (b *Benchmark) GetLogCh() chan string {
-	return b.logCh
-}
-
 func NewBenchmark(lc fx.Lifecycle, config *apiConfig.APIConfig) *Benchmark {
 	benchmark := &Benchmark{
 		args:        []string{},
 		doneCh:      make(chan struct{}),
 		waitCh:      make(chan struct{}),
 		logsArchive: []string{},
-		logCh:       make(chan string),
 		running:     0,
 		config:      config,
 	}
@@ -93,7 +87,6 @@ func (b *Benchmark) Start(ip string) error {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
 			line := scanner.Text()
-			b.logCh <- line
 			b.logsArchive = append(b.logsArchive, line)
 			logger.Info().Msg(line)
 		}
@@ -103,7 +96,6 @@ func (b *Benchmark) Start(ip string) error {
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
 			line := scanner.Text()
-			b.logCh <- line
 			b.logsArchive = append(b.logsArchive, line)
 			logger.Warn().Msg(line)
 		}

@@ -33,6 +33,7 @@ num_prompts = 500
 seed = 42
 save_result = true
 result_filename = "result_filename"
+backend = "openai"
 
 [instance]
 health_check = "health_check"

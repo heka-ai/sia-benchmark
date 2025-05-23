@@ -28,17 +28,17 @@ type VLLM struct {
 	waitCh      chan struct{}
 	running     int64
 	logsArchive []string
-	logCh       chan string
 	config      *apiConfig.APIConfig
 }
 
 func NewVLLM(lc fx.Lifecycle, config *apiConfig.APIConfig) *VLLM {
 	vllm := &VLLM{
-		args:    []string{},
-		doneCh:  make(chan struct{}),
-		waitCh:  make(chan struct{}),
-		running: 0,
-		config:  config,
+		args:        []string{},
+		doneCh:      make(chan struct{}),
+		waitCh:      make(chan struct{}),
+		logsArchive: []string{},
+		running:     0,
+		config:      config,
 	}
 
 	lc.Append(fx.StopHook(func(ctx context.Context) error {
@@ -50,10 +50,6 @@ func NewVLLM(lc fx.Lifecycle, config *apiConfig.APIConfig) *VLLM {
 
 func (v *VLLM) GetLogsArchive() []string {
 	return v.logsArchive
-}
-
-func (v *VLLM) GetLogCh() chan string {
-	return v.logCh
 }
 
 func (v *VLLM) Start(ctx context.Context) error {
@@ -83,7 +79,6 @@ func (v *VLLM) Start(ctx context.Context) error {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
 			line := scanner.Text()
-			v.logCh <- line
 			v.logsArchive = append(v.logsArchive, line)
 			logger.Info().Msg(line)
 		}
@@ -93,7 +88,6 @@ func (v *VLLM) Start(ctx context.Context) error {
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
 			line := scanner.Text()
-			v.logCh <- line
 			v.logsArchive = append(v.logsArchive, line)
 			logger.Warn().Msg(line)
 		}

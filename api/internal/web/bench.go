@@ -1,7 +1,6 @@
 package api_http
 
 import (
-	"io"
 	"net/http"
 	"strings"
 
@@ -52,25 +51,8 @@ func (s *HttpServer) generateBenchRouter(router *gin.Engine) {
 	})
 
 	benchRouter.GET("/vllm/logs", func(c *gin.Context) {
-		follow := c.Query("follow")
-		if follow == "true" {
-			ch := s.benchmark.GetLogCh()
-			c.Stream(func(w io.Writer) bool {
-				line, ok := <-ch
-				if !ok {
-					return false
-				}
-				_, err := w.Write([]byte(line))
-				if err != nil {
-					logger.Error().Err(err).Msg("Failed to write line")
-					return false
-				}
-				return true
-			})
-		} else {
-			logs := s.benchmark.GetLogsArchive()
-			c.String(http.StatusOK, strings.Join(logs, "\n"))
-		}
+		logs := s.benchmark.GetLogsArchive()
+		c.String(http.StatusOK, strings.Join(logs, "\n"))
 	})
 
 	benchRouter.GET("/vllm/results", func(c *gin.Context) {

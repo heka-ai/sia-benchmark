@@ -211,3 +211,30 @@ func (c *Client) GetResults(ip string, engineType string) (*results.Results, err
 
 	return &results, nil
 }
+
+func (c *Client) GetLogs(ip string, logsType string) (string, error) {
+	request, err := http.NewRequest("GET", fmt.Sprintf("http://%s:8001/logs/%s", ip, logsType), nil)
+	if err != nil {
+		return "", err
+	}
+
+	request.Header.Add("X-API-Key", c.APIKey)
+
+	resp, err := c.httpClient.Do(request)
+	if err != nil {
+		return "", err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("failed to get logs: %s", resp.Status)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	return string(body), nil
+}
