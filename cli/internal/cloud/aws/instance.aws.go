@@ -189,7 +189,7 @@ func (c *AWSClient) runSetup(sshClient *ssh.SSHClient, installType string) error
 		err = sshClient.Run("sudo bash /home/ubuntu/ec2/gpu/install.sh")
 	} else {
 		logger.Info().Msg("Installing the CPU dependencies")
-		err = sshClient.Run("sudo bash /home/ubuntu/ec2/cpu/install.sh")
+		err = sshClient.Run("bash /home/ubuntu/ec2/cpu/install.sh")
 	}
 
 	return err

@@ -12,6 +12,9 @@ func BenchCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "run",
 		Short: "Run the benchmark",
+		Run: func(cmd *cobra.Command, args []string) {
+			RunExec()
+		},
 	}
 }
 

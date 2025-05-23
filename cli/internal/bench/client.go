@@ -1,6 +1,7 @@
 package bench
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -144,12 +145,21 @@ func (c *Client) ModelStatus(ip string) (bool, error) {
 }
 
 func (c *Client) RunBenchmark(ip string, engineType string) error {
-	request, err := http.NewRequest("POST", fmt.Sprintf("http://%s:8001/%s/start", ip, engineType), nil)
+	request, err := http.NewRequest("POST", fmt.Sprintf("http://%s:8001/bench/%s/start", ip, engineType), nil)
+	if err != nil {
+		return err
+	}
+
+	body, err := json.Marshal(map[string]string{
+		"ip": ip,
+	})
+
 	if err != nil {
 		return err
 	}
 
 	request.Header.Add("X-API-Key", c.APIKey)
+	request.Body = io.NopCloser(bytes.NewBuffer(body))
 
 	resp, err := c.httpClient.Do(request)
 	if err != nil {

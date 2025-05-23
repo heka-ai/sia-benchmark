@@ -54,14 +54,14 @@ func NewBenchmark(lc fx.Lifecycle, config *apiConfig.APIConfig) *Benchmark {
 }
 
 func (b *Benchmark) Start(ip string) error {
-	logger.Info().Str("command", "benchmark "+strings.Join(b.args, " ")).Msg("Starting benchmark")
-
 	localArgs, err := cliConfig.GenerateBenchmarkCommand(b.config.GetConfig(), ip)
 	if err != nil {
 		return err
 	}
 
 	localArgs = append(localArgs, "--save_result", "true", "--result_filename", PATH_TO_RESULTS)
+
+	logger.Info().Str("command", PATH_TO_PYTHON+" "+strings.Join(localArgs, " ")).Msg("Starting benchmark")
 
 	b.cmd = exec.CommandContext(context.Background(), PATH_TO_PYTHON, localArgs...)
 	b.cmd.Env = append(os.Environ(), "HF_TOKEN="+b.config.GetConfig().BenchmarkConfig.Token)
