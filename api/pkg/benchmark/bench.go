@@ -29,6 +29,9 @@ type Benchmark struct {
 	waitCh  chan struct{}
 	running int64
 
+	logsArchive []string
+	logCh       chan string
+
 	config *apiConfig.APIConfig
 }
 
@@ -37,13 +40,23 @@ var BenchmarkModule = fx.Module("benchmark",
 	fx.Invoke(func(b *Benchmark) {}),
 )
 
+func (b *Benchmark) GetLogsArchive() []string {
+	return b.logsArchive
+}
+
+func (b *Benchmark) GetLogCh() chan string {
+	return b.logCh
+}
+
 func NewBenchmark(lc fx.Lifecycle, config *apiConfig.APIConfig) *Benchmark {
 	benchmark := &Benchmark{
-		args:    []string{},
-		doneCh:  make(chan struct{}),
-		waitCh:  make(chan struct{}),
-		running: 0,
-		config:  config,
+		args:        []string{},
+		doneCh:      make(chan struct{}),
+		waitCh:      make(chan struct{}),
+		logsArchive: []string{},
+		logCh:       make(chan string),
+		running:     0,
+		config:      config,
 	}
 
 	lc.Append(fx.StopHook(func(ctx context.Context) error {
@@ -79,14 +92,20 @@ func (b *Benchmark) Start(ip string) error {
 	go func() {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
-			logger.Info().Msg(scanner.Text())
+			line := scanner.Text()
+			b.logCh <- line
+			b.logsArchive = append(b.logsArchive, line)
+			logger.Info().Msg(line)
 		}
 	}()
 
 	go func() {
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
-			logger.Warn().Msg(scanner.Text())
+			line := scanner.Text()
+			b.logCh <- line
+			b.logsArchive = append(b.logsArchive, line)
+			logger.Warn().Msg(line)
 		}
 	}()
 

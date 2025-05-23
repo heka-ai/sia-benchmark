@@ -25,6 +25,7 @@ type BenchmarkConfig struct {
 	HFSplit     string `mapstructure:"hf_split" json:"hf-split" validate:"required"`
 	NumPrompts  int    `mapstructure:"num_prompts" json:"num-prompts" validate:"required"`
 	Seed        int    `mapstructure:"seed" json:"seed" validate:"required"`
+	Backend     string `mapstructure:"backend" json:"backend" validate:"required,oneof=openai"`
 }
 
 type VLLMConfig struct {
@@ -207,7 +208,7 @@ func GenerateVLLMCommand(vllmConfig *VLLMConfig) ([]string, error) {
 }
 
 func GenerateBenchmarkCommand(conf *Config, ip string) ([]string, error) {
-	localArgs := []string{"/home/ubuntu/ec2/cpu/benchmark.py", fmt.Sprintf("--base-url http://%s:8000", ip)}
+	localArgs := []string{"/home/ubuntu/ec2/cpu/benchmark.py", fmt.Sprintf("--backend %s", conf.BenchmarkConfig.Backend), fmt.Sprintf("--base-url http://%s:8000", ip)}
 
 	var inInterface map[string]interface{}
 	inrec, _ := json.Marshal(conf.BenchmarkConfig)
@@ -218,7 +219,7 @@ func GenerateBenchmarkCommand(conf *Config, ip string) ([]string, error) {
 			continue
 		}
 
-		if k == "token" {
+		if k == "token" || k == "backend" {
 			continue
 		}
 
@@ -234,9 +235,9 @@ func GenerateBenchmarkCommand(conf *Config, ip string) ([]string, error) {
 			continue
 		}
 
-		b, ok := v.(bool)
+		_, ok = v.(bool)
 		if ok {
-			localArgs = append(localArgs, fmt.Sprintf("--%s", k), strconv.FormatBool(b))
+			localArgs = append(localArgs, fmt.Sprintf("--%s", k))
 			continue
 		}
 

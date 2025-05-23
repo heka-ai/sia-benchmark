@@ -2,7 +2,9 @@ package api_http
 
 import (
 	"context"
+	"io"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -26,6 +28,24 @@ func (s *HttpServer) generateVLLMRouter(router *gin.Engine) {
 			logger.Error().Err(err).Msg("Failed to stop VLLM")
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
+		}
+	})
+
+	vllmRouter.GET("/logs", func(c *gin.Context) {
+		follow := c.Query("follow")
+		if follow == "true" {
+			ch := s.vllm.GetLogCh()
+			c.Stream(func(w io.Writer) bool {
+				line, ok := <-ch
+				if !ok {
+					return false
+				}
+				_, err := w.Write([]byte(line))
+				return err == nil
+			})
+		} else {
+			logs := s.vllm.GetLogsArchive()
+			c.String(http.StatusOK, strings.Join(logs, "\n"))
 		}
 	})
 }

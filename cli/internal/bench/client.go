@@ -8,9 +8,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-playground/validator/v10"
+	log "github.com/heka-ai/benchmark-cli/internal/logs"
 	"github.com/heka-ai/benchmark-cli/pkg/results"
 )
+
+var logger = log.GetLogger("client")
 
 // This client follow the Sia Benchmark API
 // it is used to interact with the differents instances
@@ -144,14 +146,14 @@ func (c *Client) ModelStatus(ip string) (bool, error) {
 	return false, nil
 }
 
-func (c *Client) RunBenchmark(ip string, engineType string) error {
+func (c *Client) RunBenchmark(ip string, llmIp string, engineType string) error {
 	request, err := http.NewRequest("POST", fmt.Sprintf("http://%s:8001/bench/%s/start", ip, engineType), nil)
 	if err != nil {
 		return err
 	}
 
 	body, err := json.Marshal(map[string]string{
-		"ip": ip,
+		"ip": llmIp,
 	})
 
 	if err != nil {
@@ -176,15 +178,18 @@ func (c *Client) RunBenchmark(ip string, engineType string) error {
 }
 
 func (c *Client) GetResults(ip string, engineType string) (*results.Results, error) {
-	request, err := http.NewRequest("GET", fmt.Sprintf("http://%s:8001/%s/results", ip, engineType), nil)
+	request, err := http.NewRequest("GET", fmt.Sprintf("http://%s:8001/bench/%s/results", ip, engineType), nil)
 	if err != nil {
+		logger.Error().Interface("request", request).Msg("Failed to create request")
 		return nil, err
 	}
 
 	request.Header.Add("X-API-Key", c.APIKey)
 
 	resp, err := c.httpClient.Do(request)
+
 	if err != nil {
+		logger.Error().Interface("request", resp).Msg("Failed to get results")
 		return nil, err
 	}
 
@@ -202,12 +207,6 @@ func (c *Client) GetResults(ip string, engineType string) (*results.Results, err
 	var results results.Results
 	if err := json.Unmarshal(body, &results); err != nil {
 		return nil, fmt.Errorf("failed to parse results: %v", err)
-	}
-
-	// validate
-	validator := validator.New()
-	if err := validator.Struct(results); err != nil {
-		return nil, fmt.Errorf("failed to validate results: %v", err)
 	}
 
 	return &results, nil

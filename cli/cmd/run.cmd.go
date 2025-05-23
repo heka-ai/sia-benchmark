@@ -30,7 +30,12 @@ func RunExec() {
 		logger.Fatal().Err(err).Msg("Cannot get the bench instance IP")
 	}
 
-	err = client.RunBenchmark(benchInstanceIP, c.InferenceEngine)
+	llmInstanceIP, err := cloud.GetLLMInstanceIP()
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Cannot get the LLM instance IP")
+	}
+
+	err = client.RunBenchmark(benchInstanceIP, llmInstanceIP, c.InferenceEngine)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Cannot run benchmark on bench instance")
 	}

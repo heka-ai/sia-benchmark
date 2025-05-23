@@ -1,0 +1,20 @@
+meta {
+  name: Get results
+  type: http
+  seq: 2
+}
+
+get {
+  url: http://{{ip}}/bench/{{engine}}/results
+  body: none
+  auth: inherit
+}
+
+headers {
+  : 
+}
+
+vars:pre-request {
+  ip: 34.229.42.122
+  engine: vllm
+}

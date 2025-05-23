@@ -22,12 +22,14 @@ var VLLMModule = fx.Module("vllm",
 )
 
 type VLLM struct {
-	args    []string
-	cmd     *exec.Cmd
-	doneCh  chan struct{}
-	waitCh  chan struct{}
-	running int64
-	config  *apiConfig.APIConfig
+	args        []string
+	cmd         *exec.Cmd
+	doneCh      chan struct{}
+	waitCh      chan struct{}
+	running     int64
+	logsArchive []string
+	logCh       chan string
+	config      *apiConfig.APIConfig
 }
 
 func NewVLLM(lc fx.Lifecycle, config *apiConfig.APIConfig) *VLLM {
@@ -44,6 +46,14 @@ func NewVLLM(lc fx.Lifecycle, config *apiConfig.APIConfig) *VLLM {
 	}))
 
 	return vllm
+}
+
+func (v *VLLM) GetLogsArchive() []string {
+	return v.logsArchive
+}
+
+func (v *VLLM) GetLogCh() chan string {
+	return v.logCh
 }
 
 func (v *VLLM) Start(ctx context.Context) error {
@@ -72,14 +82,20 @@ func (v *VLLM) Start(ctx context.Context) error {
 	go func() {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
-			logger.Info().Msg(scanner.Text())
+			line := scanner.Text()
+			v.logCh <- line
+			v.logsArchive = append(v.logsArchive, line)
+			logger.Info().Msg(line)
 		}
 	}()
 
 	go func() {
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
-			logger.Warn().Msg(scanner.Text())
+			line := scanner.Text()
+			v.logCh <- line
+			v.logsArchive = append(v.logsArchive, line)
+			logger.Warn().Msg(line)
 		}
 	}()
 
