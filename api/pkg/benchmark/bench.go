@@ -72,7 +72,7 @@ func (b *Benchmark) Start(ip string) error {
 		return err
 	}
 
-	localArgs = append(localArgs, "--save_result", "true", "--result_filename", PATH_TO_RESULTS)
+	localArgs = append(localArgs, "--save-result", "--result-filename", PATH_TO_RESULTS)
 
 	logger.Info().Str("command", PATH_TO_PYTHON+" "+strings.Join(localArgs, " ")).Msg("Starting benchmark")
 

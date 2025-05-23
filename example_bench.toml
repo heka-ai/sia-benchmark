@@ -31,8 +31,6 @@ hf_revision = "dummy-hf-revision"
 hf_split = "dummy-hf-split"
 num_prompts = 500
 seed = 42
-save_result = true
-result_filename = "metrics.json"
 
 [instance]
 health_check = "/health"
