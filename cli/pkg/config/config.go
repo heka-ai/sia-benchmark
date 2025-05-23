@@ -18,16 +18,14 @@ type Config struct {
 }
 
 type BenchmarkConfig struct {
-	Token          string `mapstructure:"token" json:"token" validate:"required"`
-	DatasetName    string `mapstructure:"dataset_name" json:"dataset-name" validate:"required"`
-	DatasetPath    string `mapstructure:"dataset_path" json:"dataset-path" validate:"required"`
-	HFRevision     string `mapstructure:"hf_revision" json:"hf-revision" validate:"required"`
-	HFSplit        string `mapstructure:"hf_split" json:"hf-split" validate:"required"`
-	NumPrompts     int    `mapstructure:"num_prompts" json:"num-prompts" validate:"required"`
-	Seed           int    `mapstructure:"seed" json:"seed" validate:"required"`
-	Backend        string `mapstructure:"backend" json:"backend" validate:"required,oneof=openai"`
-	SaveResult     bool   `mapstructure:"save_result" json:"save-result" validate:"required"`
-	ResultFilename string `mapstructure:"result_filename" json:"result-filename" validate:"required"`
+	Token       string `mapstructure:"token" json:"token" validate:"required"`
+	DatasetName string `mapstructure:"dataset_name" json:"dataset-name" validate:"required"`
+	DatasetPath string `mapstructure:"dataset_path" json:"dataset-path" validate:"required"`
+	HFRevision  string `mapstructure:"hf_revision" json:"hf-revision" validate:"required"`
+	HFSplit     string `mapstructure:"hf_split" json:"hf-split" validate:"required"`
+	NumPrompts  int    `mapstructure:"num_prompts" json:"num-prompts" validate:"required"`
+	Seed        int    `mapstructure:"seed" json:"seed" validate:"required"`
+	Backend     string `mapstructure:"backend" json:"backend" validate:"required,oneof=openai"`
 }
 
 type VLLMConfig struct {
