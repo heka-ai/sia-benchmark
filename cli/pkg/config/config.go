@@ -208,7 +208,7 @@ func GenerateVLLMCommand(vllmConfig *VLLMConfig) ([]string, error) {
 }
 
 func GenerateBenchmarkCommand(conf *Config, ip string) ([]string, error) {
-	localArgs := []string{"/home/ubuntu/ec2/cpu/benchmark.py", fmt.Sprintf("--backend %s", conf.BenchmarkConfig.Backend), fmt.Sprintf("--base-url http://%s:8000", ip)}
+	localArgs := []string{"/home/ubuntu/ec2/cpu/benchmark.py", "--backend", conf.BenchmarkConfig.Backend, "--base-url", fmt.Sprintf("http://%s:8000", ip)}
 
 	var inInterface map[string]interface{}
 	inrec, _ := json.Marshal(conf.BenchmarkConfig)
