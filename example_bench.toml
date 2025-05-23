@@ -120,7 +120,6 @@ typical-acceptance-sampler-posterior-threshold = ""
 typical-acceptance-sampler-posterior-alpha = ""
 disable-logprobs-during-spec-decoding = ""
 model-loader-extra-config = ""
-ignore-patterns = []
 preemption-mode = ""
 qlora-adapter-name-or-path = ""
 otlp-traces-endpoint = ""
