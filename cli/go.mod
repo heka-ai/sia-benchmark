@@ -1,6 +1,6 @@
 module github.com/heka-ai/benchmark-cli
 
-go 1.22.5
+go 1.23.0
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.36.3
@@ -9,7 +9,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.203.1
 	github.com/aws/smithy-go v1.22.2
 	github.com/getsentry/sentry-go v0.32.0
+	github.com/melbahja/goph v1.4.0
 	github.com/rs/zerolog v1.34.0
+	golang.org/x/crypto v0.35.0
 )
 
 require (
@@ -30,7 +32,6 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 	github.com/kr/fs v0.1.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
-	github.com/melbahja/goph v1.4.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pkg/sftp v1.13.7 // indirect
@@ -42,7 +43,6 @@ require (
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
-	golang.org/x/crypto v0.33.0 // indirect
 	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
@@ -50,7 +50,6 @@ require (
 
 require (
 	github.com/aws/aws-sdk-go-v2/service/iam v1.42.0
-	github.com/fatih/structs v1.1.0
 	github.com/go-playground/validator/v10 v10.26.0
 	github.com/google/uuid v1.6.0
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
