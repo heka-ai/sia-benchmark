@@ -11,6 +11,7 @@ type Config struct {
 	Provider        string           `mapstructure:"provider" validate:"required,oneof=aws gcp scaleway"`
 	InferenceEngine string           `mapstructure:"inference_engine" validate:"required,oneof=vllm"`
 	AWSConfig       *AWSConfig       `mapstructure:"aws" validate:"required_if=Provider aws"`
+	ScalewayConfig  *ScalewayConfig  `mapstructure:"scaleway" validate:"required_if=Provider scaleway"`
 	VLLMConfig      *VLLMConfig      `mapstructure:"vllm" validate:"required_if=InferenceEngine vllm"`
 	InstanceConfig  *InstanceConfig  `mapstructure:"instance"`
 	BenchmarkConfig *BenchmarkConfig `mapstructure:"benchmark" validate:"required"`
@@ -153,12 +154,17 @@ type GCPConfig struct {
 }
 
 type ScalewayConfig struct {
-	Region          string `mapstructure:"region" validate:"required"`
+	Region          string `mapstructure:"region" validate:"required,oneof=fr-par nl-ams pl-waw"`
 	CPUInstanceType string `mapstructure:"cpu_instance_type" validate:"required"`
 	GPUInstanceType string `mapstructure:"gpu_instance_type" validate:"required"`
 
-	ScalewayAccessKey string `mapstructure:"access_key" validate:"required"`
-	ScalewaySecretKey string `mapstructure:"secret_key" validate:"required"`
+	OrganizationID string `mapstructure:"organization_id" validate:"required"`
+	ProjectID      string `mapstructure:"project_id" validate:"required"`
+
+	ProfileName string `mapstructure:"profile_name" validate:"required_if=ScalewayAccessKey false"`
+
+	ScalewayAccessKey string `mapstructure:"access_key" validate:"required_if=ProfileName false"`
+	ScalewaySecretKey string `mapstructure:"secret_key" validate:"required_if=ProfileName false"`
 }
 
 type InstanceConfig struct {

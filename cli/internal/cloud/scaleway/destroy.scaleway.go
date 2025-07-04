@@ -1,6 +1,6 @@
-package scw
+package scaleway
 
-func (c *SCWClient) Destroy() error {
+func (c *ScalewayClient) Destroy() error {
 	logger.Info().Msg("Mocking Scaleway Destroy")
 
 	return nil

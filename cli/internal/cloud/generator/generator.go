@@ -5,7 +5,7 @@ import (
 
 	"github.com/heka-ai/benchmark-cli/internal/cloud"
 	"github.com/heka-ai/benchmark-cli/internal/cloud/aws"
-	"github.com/heka-ai/benchmark-cli/internal/cloud/scw"
+	"github.com/heka-ai/benchmark-cli/internal/cloud/scaleway"
 	log "github.com/heka-ai/benchmark-cli/internal/logs"
 	"github.com/heka-ai/benchmark-cli/pkg/config"
 )
@@ -18,9 +18,9 @@ func NewCloud(config *config.Config) cloud.Cloud {
 	case "aws":
 		awsClient := aws.NewClient(config)
 		return awsClient.Init()
-	case "scw":
-		scwClient := scw.NewClient(config)
-		return scwClient.Init()
+	case "scaleway":
+		scalewayClient := scaleway.NewClient(config)
+		return scalewayClient.Init()
 	default:
 		logger.Fatal().Msgf("Unsupported cloud provider: %s", config.Provider)
 		os.Exit(1)
