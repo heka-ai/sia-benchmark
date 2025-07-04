@@ -3,6 +3,7 @@ package scaleway
 import (
 	"github.com/heka-ai/benchmark-cli/internal/bench"
 	"github.com/heka-ai/benchmark-cli/internal/cloud"
+	"github.com/heka-ai/benchmark-cli/internal/constants"
 	log "github.com/heka-ai/benchmark-cli/internal/logs"
 	"github.com/heka-ai/benchmark-cli/pkg/config"
 	iam "github.com/scaleway/scaleway-sdk-go/api/iam/v1alpha1"
@@ -70,5 +71,62 @@ func (c *ScalewayClient) Init() cloud.Cloud {
 	c.vpc = vpc.NewAPI(client)
 	c.instance = instance.NewAPI(client)
 
+	c.wasInit = true
+
 	return c
+}
+
+func (c *ScalewayClient) GetAllBenchmarkServers() ([]*instance.Server, error) {
+	return c.GetBenchmarkServers(nil)
+}
+
+func (c *ScalewayClient) GetBenchmarkServers(state *instance.ServerState) ([]*instance.Server, error) {
+	listServersOutput, err := c.instance.ListServers(&instance.ListServersRequest{
+		Tags:  []string{constants.BenchIDTag + "/" + c.config.BenchID},
+		State: state,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return listServersOutput.Servers, nil
+}
+
+func (c *ScalewayClient) deleteServer(serverID string) error {
+
+	action := instance.ServerActionPoweroff
+
+	logger.Debug().Msgf("Using Action %s on Server %s... ", action, serverID)
+	err := c.instance.ServerActionAndWait(&instance.ServerActionAndWaitRequest{
+		ServerID: serverID,
+		Action:   action,
+	})
+	if err != nil {
+		return err
+	}
+	logger.Debug().Msgf("Completed Action %s on Server %s... ", action, serverID)
+
+	err = c.instance.DeleteServer(&instance.DeleteServerRequest{
+		ServerID: serverID,
+	})
+	if err != nil {
+		return err
+	}
+	logger.Debug().Msgf("Deleted Server %s... ", serverID)
+
+	return nil
+}
+
+func (c *ScalewayClient) deleteVolume(volumeID string) error {
+
+	err := c.instance.DeleteVolume(&instance.DeleteVolumeRequest{
+		VolumeID: volumeID,
+	})
+	if err != nil {
+		return err
+	}
+	logger.Debug().Msgf("Deleted Volume %s... ", volumeID)
+
+	return nil
 }

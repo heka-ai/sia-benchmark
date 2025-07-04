@@ -1,4 +1,4 @@
-bench_id = "bench_id_test"
+bench_id = "1234"
 provider = "scaleway"
 inference_engine = "vllm"
 api_key = "api_key_test"
