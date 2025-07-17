@@ -5,57 +5,64 @@ import (
 )
 
 func (c *ScalewayClient) Destroy() error {
-	logger.Info().Msg("Mocking Scaleway Destroy")
+	logger.Info().Msg("Scaleway Destroy")
 
-	err := c.DeleteInstance()
+	err := c.DeleteServers()
 	if err != nil {
-		logger.Error().Err(err).Msg("Error while deleting the instance")
+		logger.Error().Err(err).Msg("Error while deleting the servers")
+		return err
+	}
+
+	err = c.DeleteVolumes()
+	if err != nil {
+		logger.Error().Err(err).Msg("Error while deleting the volumes")
 		return err
 	}
 
 	return nil
 }
 
-func (c *ScalewayClient) DeleteInstance() error {
+func (c *ScalewayClient) DeleteServers() error {
 	if !c.wasInit {
 		return errors.New("client not initialized")
 	}
 
 	servers, err := c.GetAllBenchmarkServers()
-
 	if err != nil {
 		return err
-	}
-
-	if len(servers) == 0 {
-		return errors.New("no server found for this benchmark")
 	}
 
 	logger.Debug().Msgf("Found %d servers for this benchmark", len(servers))
 	for _, server := range servers {
 		logger.Debug().Msgf("Server ID: %s, Name: %s, Tags: %s", server.ID, server.Name, server.Tags)
-	}
 
-	for _, server := range servers {
-		err = c.deleteServer(server.ID)
-
+		err = c.deleteServer(*server)
 		if err != nil {
 			return err
 		}
+	}
 
-		logger.Info().Msgf("Server %s deleted", server.ID)
+	return nil
+}
 
-		for _, volume := range server.Volumes {
+func (c *ScalewayClient) DeleteVolumes() error {
+	if !c.wasInit {
+		return errors.New("client not initialized")
+	}
 
-			err = c.deleteVolume(volume.ID)
+	volumes, err := c.GetAllBenchmarkVolumes()
+	if err != nil {
+		return err
+	}
 
-			if err != nil {
-				return err
-			}
+	logger.Debug().Msgf("Found %d volumes for this benchmark", len(volumes))
+	for _, volume := range volumes {
+		logger.Debug().Msgf("Volume ID: %s, Name: %s, Tags: %s", volume.ID, volume.Name, volume.Tags)
 
-			logger.Info().Msgf("Volume %s deleted", volume.ID)
+		err = c.deleteVolume(*volume)
+		if err != nil {
+			return err
 		}
-
 	}
 
 	return nil

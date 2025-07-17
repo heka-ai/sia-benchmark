@@ -1,13 +1,27 @@
 package scaleway
 
-import "github.com/scaleway/scaleway-sdk-go/api/vpc/v2"
+import "errors"
 
 func (c *ScalewayClient) Create() error {
-	logger.Info().Msg("Mocking Scaleway Create")
+	logger.Info().Msg("Scaleway Create")
 
-	found_vpc_list, _ := c.vpc.ListVPCs(&vpc.ListVPCsRequest{})
-	for _, found_vpc := range found_vpc_list.Vpcs {
-		logger.Info().Msg("Found VPC: " + found_vpc.Name + " (" + found_vpc.ID + ")")
+	err := c.CreateServer()
+	if err != nil {
+		logger.Error().Err(err).Msg("Error while creating the instance")
+		return err
+	}
+
+	return nil
+}
+
+func (c *ScalewayClient) CreateServer() error {
+	if !c.wasInit {
+		return errors.New("client not initialized")
+	}
+
+	err := c.createServer()
+	if err != nil {
+		return err
 	}
 
 	return nil
