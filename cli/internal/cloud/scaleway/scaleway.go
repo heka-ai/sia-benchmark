@@ -49,6 +49,9 @@ func (c *ScalewayClient) Init() cloud.Cloud {
 	opts = append(opts, scw.WithDefaultRegion(scw.Region(c.config.ScalewayConfig.Region)))
 	logger.Debug().Msg("Added Option WithDefaultRegion... " + c.config.ScalewayConfig.Region)
 
+	opts = append(opts, scw.WithDefaultZone(scw.Zone(c.config.ScalewayConfig.Zone)))
+	logger.Debug().Msg("Added Option WithDefaultRegion... " + c.config.ScalewayConfig.Region)
+
 	if c.config.ScalewayConfig.ProfileName != "" {
 		p, _ := scw.MustLoadConfig().GetProfile(c.config.ScalewayConfig.ProfileName)
 		opts = append(opts, scw.WithProfile(p))

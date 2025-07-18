@@ -154,7 +154,16 @@ type GCPConfig struct {
 }
 
 type ScalewayConfig struct {
-	Region               string `mapstructure:"region" validate:"required,oneof=fr-par nl-ams pl-waw"`
+	ProfileName string `mapstructure:"profile_name" validate:"required_if=ScalewayAccessKey false"`
+
+	ScalewayAccessKey string `mapstructure:"access_key" validate:"required_if=ProfileName false"`
+	ScalewaySecretKey string `mapstructure:"secret_key" validate:"required_if=ProfileName false"`
+
+	OrganizationID string `mapstructure:"organization_id" validate:"required"`
+	ProjectID      string `mapstructure:"project_id" validate:"required"`
+	Region         string `mapstructure:"region" validate:"required,oneof=fr-par nl-ams pl-waw"`
+	Zone           string `mapstructure:"zone" validate:"required,oneof=fr-par-1 fr-par-2 fr-par-3 nl-ams-1 nl-ams-2 nl-ams-3 pl-waw-1 pl-waw-2 pl-waw-3"`
+
 	BaseCommercialType   string `mapstructure:"base_commercial_type" validate:"required"`
 	ClientCommercialType string `mapstructure:"client_commercial_type" validate:"required"`
 	ServerCommercialType string `mapstructure:"server_commercial_type" validate:"required"`
@@ -162,14 +171,6 @@ type ScalewayConfig struct {
 	BaseImage   string `mapstructure:"base_image" validate:"required"`
 	ClientImage string `mapstructure:"client_image" validate:"required"`
 	ServerImage string `mapstructure:"server_image" validate:"required"`
-
-	OrganizationID string `mapstructure:"organization_id" validate:"required"`
-	ProjectID      string `mapstructure:"project_id" validate:"required"`
-
-	ProfileName string `mapstructure:"profile_name" validate:"required_if=ScalewayAccessKey false"`
-
-	ScalewayAccessKey string `mapstructure:"access_key" validate:"required_if=ProfileName false"`
-	ScalewaySecretKey string `mapstructure:"secret_key" validate:"required_if=ProfileName false"`
 }
 
 type InstanceConfig struct {
