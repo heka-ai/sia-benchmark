@@ -4,8 +4,13 @@ inference_engine = "vllm"
 api_key = "api_key_test"
 
 [scaleway]
-cpu_instance_type = "scaleway_cpu_instance_type_test"
-gpu_instance_type = "scaleway_gpu_instance_type_test"
+base_commercial_type = "DEV1-S"
+client_commercial_type = "DEV1-S"
+server_commercial_type = "DEV1-S"
+
+base_image = "ubuntu_noble"
+client_image = "ubuntu_noble"
+server_image = "ubuntu_noble"
 
 organization_id = "98e7c046-a065-4225-8a5b-531e42cdb457"
 project_id = "9cfe8426-a7a5-4991-a573-7e0090fe1bdd"

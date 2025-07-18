@@ -105,17 +105,18 @@ func (c *ScalewayClient) GetAllBenchmarkVolumes() ([]*instance.Volume, error) {
 	return listVolumesResponse.Volumes, nil
 }
 
-func (c *ScalewayClient) createServer() error {
+func (c *ScalewayClient) createServer(CommercialType string, Image *string, SSHKeyID *string) (*instance.Server, error) {
 
 	logger.Debug().Msgf("Creating Server... ")
 	createServerResponse, err := c.instance.CreateServer(&instance.CreateServerRequest{
-		CommercialType: "DEV1-S",
-		Image:          scw.StringPtr("ubuntu_noble"),
-		Tags:           []string{constants.BenchIDTag + "/" + c.config.BenchID},
-		Project:        scw.StringPtr(c.config.ScalewayConfig.ProjectID),
+		Project:                         scw.StringPtr(c.config.ScalewayConfig.ProjectID),
+		Tags:                            []string{constants.BenchIDTag + "/" + c.config.BenchID},
+		CommercialType:                  CommercialType,
+		Image:                           Image,
+		AdminPasswordEncryptionSSHKeyID: SSHKeyID,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	logger.Info().Msgf("Created Server %s (%s)... ", createServerResponse.Server.ID, createServerResponse.Server.Name)
 
@@ -126,7 +127,7 @@ func (c *ScalewayClient) createServer() error {
 			Tags:     &[]string{constants.BenchIDTag + "/" + c.config.BenchID},
 		})
 		if err != nil {
-			return err
+			return nil, err
 		}
 		logger.Debug().Msgf("Updated Volume %s tags... ", volume.ID)
 	}
@@ -137,11 +138,11 @@ func (c *ScalewayClient) createServer() error {
 		Action:   instance.ServerActionPoweron,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	logger.Info().Msgf("Completed Action %s on Server %s (%s)... ", instance.ServerActionPoweron, createServerResponse.Server.ID, createServerResponse.Server.Name)
 
-	return nil
+	return createServerResponse.Server, nil
 }
 
 func (c *ScalewayClient) deleteServer(server instance.Server) error {

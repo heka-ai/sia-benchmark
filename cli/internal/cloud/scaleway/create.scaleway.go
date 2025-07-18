@@ -3,6 +3,8 @@ package scaleway
 import (
 	"errors"
 	"sync"
+
+	"github.com/scaleway/scaleway-sdk-go/scw"
 )
 
 func (c *ScalewayClient) Create() error {
@@ -33,6 +35,7 @@ func (c *ScalewayClient) Create() error {
 	// Check if any errors occurred
 	for err := range errChan {
 		if err != nil {
+			logger.Error().Err(err).Msgf("Error while creating the servers... ")
 			return err
 		}
 	}
@@ -45,7 +48,12 @@ func (c *ScalewayClient) CreateBenchmarkClient() error {
 		return errors.New("client not initialized")
 	}
 
-	err := c.createServer()
+	logger.Debug().Msgf("Creating Benchmark Client... ")
+	_, err := c.createServer(
+		c.config.ScalewayConfig.ClientCommercialType,
+		scw.StringPtr(c.config.ScalewayConfig.ClientImage),
+		nil,
+	)
 	if err != nil {
 		return err
 	}
@@ -58,7 +66,12 @@ func (c *ScalewayClient) CreateBenchmarkServer() error {
 		return errors.New("client not initialized")
 	}
 
-	err := c.createServer()
+	logger.Debug().Msgf("Creating Benchmark Server... ")
+	_, err := c.createServer(
+		c.config.ScalewayConfig.ServerCommercialType,
+		scw.StringPtr(c.config.ScalewayConfig.ServerImage),
+		nil,
+	)
 	if err != nil {
 		return err
 	}

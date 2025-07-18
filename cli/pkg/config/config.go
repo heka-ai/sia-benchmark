@@ -154,9 +154,14 @@ type GCPConfig struct {
 }
 
 type ScalewayConfig struct {
-	Region          string `mapstructure:"region" validate:"required,oneof=fr-par nl-ams pl-waw"`
-	CPUInstanceType string `mapstructure:"cpu_instance_type" validate:"required"`
-	GPUInstanceType string `mapstructure:"gpu_instance_type" validate:"required"`
+	Region               string `mapstructure:"region" validate:"required,oneof=fr-par nl-ams pl-waw"`
+	BaseCommercialType   string `mapstructure:"base_commercial_type" validate:"required"`
+	ClientCommercialType string `mapstructure:"client_commercial_type" validate:"required"`
+	ServerCommercialType string `mapstructure:"server_commercial_type" validate:"required"`
+
+	BaseImage   string `mapstructure:"base_image" validate:"required"`
+	ClientImage string `mapstructure:"client_image" validate:"required"`
+	ServerImage string `mapstructure:"server_image" validate:"required"`
 
 	OrganizationID string `mapstructure:"organization_id" validate:"required"`
 	ProjectID      string `mapstructure:"project_id" validate:"required"`
