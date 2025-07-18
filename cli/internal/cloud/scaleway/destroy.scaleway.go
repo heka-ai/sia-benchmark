@@ -2,6 +2,9 @@ package scaleway
 
 import (
 	"errors"
+	"sync"
+
+	"github.com/scaleway/scaleway-sdk-go/api/instance/v1"
 )
 
 func (c *ScalewayClient) Destroy() error {
@@ -33,10 +36,26 @@ func (c *ScalewayClient) DeleteServers() error {
 	}
 
 	logger.Debug().Msgf("Found %d servers for this benchmark", len(servers))
-	for _, server := range servers {
-		logger.Debug().Msgf("Server ID: %s, Name: %s, Tags: %s", server.ID, server.Name, server.Tags)
+	var wg sync.WaitGroup
+	errChan := make(chan error, len(servers))
 
-		err = c.deleteServer(*server)
+	for _, server := range servers {
+		wg.Add(1)
+		go func(srv instance.Server) {
+			defer wg.Done()
+			logger.Debug().Msgf("Server ID: %s, Name: %s, Tags: %s", srv.ID, srv.Name, srv.Tags)
+
+			if err := c.deleteServer(srv); err != nil {
+				errChan <- err
+			}
+		}(*server)
+	}
+
+	wg.Wait()
+	close(errChan)
+
+	// Check if any errors occurred
+	for err := range errChan {
 		if err != nil {
 			return err
 		}
@@ -56,10 +75,26 @@ func (c *ScalewayClient) DeleteVolumes() error {
 	}
 
 	logger.Debug().Msgf("Found %d volumes for this benchmark", len(volumes))
-	for _, volume := range volumes {
-		logger.Debug().Msgf("Volume ID: %s, Name: %s, Tags: %s", volume.ID, volume.Name, volume.Tags)
+	var wg sync.WaitGroup
+	errChan := make(chan error, len(volumes))
 
-		err = c.deleteVolume(*volume)
+	for _, volume := range volumes {
+		wg.Add(1)
+		go func(vol instance.Volume) {
+			defer wg.Done()
+			logger.Debug().Msgf("Volume ID: %s, Name: %s, Tags: %s", vol.ID, vol.Name, vol.Tags)
+
+			if err := c.deleteVolume(vol); err != nil {
+				errChan <- err
+			}
+		}(*volume)
+	}
+
+	wg.Wait()
+	close(errChan)
+
+	// Check if any errors occurred
+	for err := range errChan {
 		if err != nil {
 			return err
 		}

@@ -6,7 +6,6 @@ import (
 	"github.com/heka-ai/benchmark-cli/internal/constants"
 	log "github.com/heka-ai/benchmark-cli/internal/logs"
 	"github.com/heka-ai/benchmark-cli/pkg/config"
-	"github.com/scaleway/scaleway-sdk-go/api/block/v1"
 	iam "github.com/scaleway/scaleway-sdk-go/api/iam/v1alpha1"
 	"github.com/scaleway/scaleway-sdk-go/api/instance/v1"
 	"github.com/scaleway/scaleway-sdk-go/api/vpc/v2"
@@ -24,7 +23,6 @@ type ScalewayClient struct {
 	iam      *iam.API
 	vpc      *vpc.API
 	instance *instance.API
-	block    *block.API
 
 	wasInit bool
 }
@@ -72,7 +70,6 @@ func (c *ScalewayClient) Init() cloud.Cloud {
 	c.iam = iam.NewAPI(client)
 	c.vpc = vpc.NewAPI(client)
 	c.instance = instance.NewAPI(client)
-	c.block = block.NewAPI(client)
 
 	c.wasInit = true
 
@@ -108,18 +105,6 @@ func (c *ScalewayClient) GetAllBenchmarkVolumes() ([]*instance.Volume, error) {
 	return listVolumesResponse.Volumes, nil
 }
 
-func (c *ScalewayClient) GetAllBenchmarkBlocks() ([]*block.Volume, error) {
-	listVolumesResponse, err := c.block.ListVolumes(&block.ListVolumesRequest{
-		Tags: []string{constants.BenchIDTag + "/" + c.config.BenchID},
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	return listVolumesResponse.Volumes, nil
-}
-
 func (c *ScalewayClient) createServer() error {
 
 	logger.Debug().Msgf("Creating Server... ")
@@ -132,10 +117,10 @@ func (c *ScalewayClient) createServer() error {
 	if err != nil {
 		return err
 	}
-	logger.Debug().Msgf("Created Server %s... ", createServerResponse.Server.Name)
+	logger.Info().Msgf("Created Server %s (%s)... ", createServerResponse.Server.ID, createServerResponse.Server.Name)
 
 	for _, volume := range createServerResponse.Server.Volumes {
-		logger.Debug().Msgf("Updating Volume %s tags... ", *volume.Name)
+		logger.Debug().Msgf("Updating Volume %s tags... ", volume.ID)
 		_, err := c.instance.UpdateVolume(&instance.UpdateVolumeRequest{
 			VolumeID: volume.ID,
 			Tags:     &[]string{constants.BenchIDTag + "/" + c.config.BenchID},
@@ -143,10 +128,10 @@ func (c *ScalewayClient) createServer() error {
 		if err != nil {
 			return err
 		}
-		logger.Debug().Msgf("Updated Volume %s tags... ", *volume.Name)
+		logger.Debug().Msgf("Updated Volume %s tags... ", volume.ID)
 	}
 
-	logger.Debug().Msgf("Using Action %s on Server %s... ", instance.ServerActionPoweron, createServerResponse.Server.Name)
+	logger.Debug().Msgf("Using Action %s on Server %s... ", instance.ServerActionPoweron, createServerResponse.Server.ID)
 	err = c.instance.ServerActionAndWait(&instance.ServerActionAndWaitRequest{
 		ServerID: createServerResponse.Server.ID,
 		Action:   instance.ServerActionPoweron,
@@ -154,7 +139,7 @@ func (c *ScalewayClient) createServer() error {
 	if err != nil {
 		return err
 	}
-	logger.Debug().Msgf("Completed Action %s on Server %s... ", instance.ServerActionPoweron, createServerResponse.Server.Name)
+	logger.Info().Msgf("Completed Action %s on Server %s (%s)... ", instance.ServerActionPoweron, createServerResponse.Server.ID, createServerResponse.Server.Name)
 
 	return nil
 }
@@ -162,7 +147,7 @@ func (c *ScalewayClient) createServer() error {
 func (c *ScalewayClient) deleteServer(server instance.Server) error {
 
 	if server.State == instance.ServerStateRunning {
-		logger.Debug().Msgf("Using Action %s on Server %s... ", instance.ServerActionPoweroff, server.Name)
+		logger.Debug().Msgf("Using Action %s on Server %s... ", instance.ServerActionPoweroff, server.ID)
 		err := c.instance.ServerActionAndWait(&instance.ServerActionAndWaitRequest{
 			ServerID: server.ID,
 			Action:   instance.ServerActionPoweroff,
@@ -170,7 +155,7 @@ func (c *ScalewayClient) deleteServer(server instance.Server) error {
 		if err != nil {
 			return err
 		}
-		logger.Debug().Msgf("Completed Action %s on Server %s... ", instance.ServerActionPoweroff, server.Name)
+		logger.Debug().Msgf("Completed Action %s on Server %s... ", instance.ServerActionPoweroff, server.ID)
 	}
 
 	logger.Debug().Msgf("Deleting Server %s... ", server.ID)
@@ -180,21 +165,21 @@ func (c *ScalewayClient) deleteServer(server instance.Server) error {
 	if err != nil {
 		return err
 	}
-	logger.Debug().Msgf("Deleted Server %s... ", server.Name)
+	logger.Info().Msgf("Deleted Server %s... ", server.ID)
 
 	return nil
 }
 
 func (c *ScalewayClient) deleteVolume(volume instance.Volume) error {
 
-	logger.Debug().Msgf("Deleting Volume %s... ", volume.Name)
+	logger.Debug().Msgf("Deleting Volume %s... ", volume.ID)
 	err := c.instance.DeleteVolume(&instance.DeleteVolumeRequest{
 		VolumeID: volume.ID,
 	})
 	if err != nil {
 		return err
 	}
-	logger.Debug().Msgf("Deleted Volume %s... ", volume.Name)
+	logger.Info().Msgf("Deleted Volume %s... ", volume.ID)
 
 	return nil
 }
