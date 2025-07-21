@@ -68,6 +68,9 @@ We have already built AMIs on AWS, these AMIs are ready to run the benchmark.
 ## Roadmap
 
 - [ ] Publish the AMIs on major AWS Regions
+- [ ] Test with EC2 on the same rack
+- [ ] Local provider
+- [ ] Use inferentia
 - [ ] Integrate the instance building in the CLI
 - [ ] Run benchmarks on Scaleway
 - [ ] Run benchmarks on GCP
