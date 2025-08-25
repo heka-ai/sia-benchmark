@@ -1,7 +1,6 @@
 package config
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"reflect"
@@ -17,14 +16,10 @@ var config Config
 
 // Init the config and validate it
 func Init() {
-	InitFlags()
 	InitConfig()
 }
 
-func InitFlags() {
-	flag.String("config", "bench.toml", "Path to the config file")
-	flag.Parse()
-}
+func InitFlags() {}
 
 func GetConfig() Config {
 	return config
@@ -33,11 +28,12 @@ func GetConfig() Config {
 func InitConfig() {
 	localConfig := Config{}
 
-	filename := flag.Lookup("config").Value.String()
+	filename := viper.GetString("config")
+	if strings.TrimSpace(filename) == "" {
+		filename = "bench.toml"
+	}
 
-	viper.SetConfigName(filename)
-	viper.SetConfigType("toml")
-	viper.AddConfigPath(".")
+	viper.SetConfigFile(filename)
 
 	viper.AutomaticEnv()
 
