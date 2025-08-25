@@ -1,4 +1,4 @@
-bench_id = "dummy"
+benchmark_id = "dummy"
 provider = "aws"
 inference_engine = "vllm"
 api_key = "dummy"

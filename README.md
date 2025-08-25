@@ -47,6 +47,8 @@ Dry run to check if provider credentials are valid AND if your dataset comes fro
 HF_TOKEN:${HF_TOKEN} bench creds --config <path_to_config_file> # check your cloud credentials
 ```
 
+Make sure you have at least ec2RunInstances permissions (aws for example).
+
 ```bash
 bench create --config <path_to_config_file> # create the instances on the cloud
 bench connection --config <path_to_config_file> # check the connection to the instances

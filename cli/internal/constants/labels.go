@@ -7,5 +7,5 @@ const (
 )
 
 const (
-	BenchmarkIDTag = "benchmark-id"
+	BenchmarkIDTag = "bench-id"
 )

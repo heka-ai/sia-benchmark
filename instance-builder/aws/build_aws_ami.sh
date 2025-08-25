@@ -384,16 +384,16 @@ launch_and_create_ami() {
     fi
 
     echo "Creating $ami_type AMI..."
-    
+
     # Launch instance
     launch_instance "$instance_type" "$ami_type"
-    
+
     # Install requirements
     install_requirements "$install_script"
-    
+
     # Setup API service
     setup_api_service
-    
+
     # Create AMI
     create_ami "$ami_type"
 }

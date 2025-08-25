@@ -141,7 +141,7 @@ func (c *AWSClient) createInstance(instanceType string, dryRun bool, ami string,
 	allTags := slices.Concat(tags, defaultTags)
 	base64UserData := base64.StdEncoding.EncodeToString([]byte(userData))
 
-	logger.Debug().Str("instance-type", instanceType).Str("ami", ami).Str("user-data", base64UserData).Interface("tags", allTags).Msg("Creating the instance (dry-run)")
+	logger.Debug().Str("instance-type", instanceType).Str("ami", ami).Interface("tags", allTags).Msg("Creating the instance (dry-run)")
 
 	_, err := c.svc.RunInstances(context.TODO(), &ec2.RunInstancesInput{
 		InstanceType: types.InstanceType(instanceType),
@@ -186,8 +186,14 @@ func (c *AWSClient) GetBenchmarkInstances() ([]types.Instance, error) {
 				Values: []string{c.config.BenchmarkID},
 			},
 			{
-				Name:   aws.String("instance-state-name"),
-				Values: []string{"running"},
+				Name: aws.String("instance-state-name"),
+				Values: []string{
+					"pending",
+					"running",
+					"stopping",
+					"stopped",
+					"shutting-down",
+				},
 			},
 		},
 	})

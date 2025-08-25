@@ -43,7 +43,7 @@ func (c *HFClient) ValidateCredentials() error {
 
 	// Skip validation when using random dataset (no HF access required)
 	if c.config != nil && c.config.BenchmarkConfig != nil && c.config.BenchmarkConfig.DatasetName == "random" {
-		logger.Info().Msg("Skipping Hugging Face token validation (dataset_name is 'random')")
+		logger.Info().Msg("Skipping HuggingFace token validation (dataset_name is 'random')")
 		return nil
 	}
 
@@ -52,7 +52,7 @@ func (c *HFClient) ValidateCredentials() error {
 		token = c.config.BenchmarkConfig.Token
 	}
 	if token == "" {
-		return errors.New("missing Hugging Face token (benchmark.token or HF_TOKEN)")
+		return errors.New("missing HuggingFace token (benchmark.token or HF_TOKEN or HUGGINGFACEHUB_API_TOKEN or HF_API_TOKEN)")
 	}
 
 	// 1) Validate token via whoami
@@ -73,10 +73,10 @@ func (c *HFClient) ValidateCredentials() error {
 
 	switch resp.StatusCode {
 	case http.StatusOK:
-		logger.Info().Msg("OK - Hugging Face token is valid")
+		logger.Info().Msg("OK - HuggingFace token is valid")
 		// continue to model access check
 	case http.StatusUnauthorized, http.StatusForbidden:
-		return errors.New("invalid Hugging Face token")
+		return errors.New("invalid HuggingFace token")
 	default:
 		return fmt.Errorf("unexpected response validating token: %s", resp.Status)
 	}
