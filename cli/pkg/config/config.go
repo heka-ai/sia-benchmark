@@ -8,25 +8,25 @@ import (
 
 type Config struct {
 	BenchmarkID     string           `mapstructure:"benchmark_id" validate:"required"`
-	Provider        string           `mapstructure:"provider" validate:"required,oneof=aws gcp scaleway"`
+	Provider        string           `mapstructure:"provider" validate:"required,oneof=aws gcp scaleway local"`
 	InferenceEngine string           `mapstructure:"inference_engine" validate:"required,oneof=vllm"`
 	AWSConfig       *AWSConfig       `mapstructure:"aws" validate:"required_if=Provider aws"`
 	VLLMConfig      *VLLMConfig      `mapstructure:"vllm" validate:"required_if=InferenceEngine vllm"`
 	InstanceConfig  *InstanceConfig  `mapstructure:"instance"`
 	BenchmarkConfig *BenchmarkConfig `mapstructure:"benchmark" validate:"required"`
-	APIKey          string           `mapstructure:"api_key" validate:"required"`
+	APIKey          string           `mapstructure:"api_key" validate:"required_unless=Provider local"`
 }
 
 type BenchmarkConfig struct {
-	Token       string `mapstructure:"token" json:"token" validate:"omitempty"`
-	DatasetName string `mapstructure:"dataset_name" json:"dataset-name" validate:"required,oneof=random hf heka"`
-	DatasetPath string `mapstructure:"dataset_path" json:"dataset-path" validate:"required"`
-	HFRevision  string `mapstructure:"hf_revision" json:"hf-revision" validate:"required" default:"main"`
-	HFSplit     string `mapstructure:"hf_split" json:"hf-split" validate:"required" default:"train"`
-	NumPrompts  int    `mapstructure:"num_prompts" json:"num-prompts" validate:"required" default:"500"`
-	Seed        int    `mapstructure:"seed" json:"seed" validate:"required" default:"42"`
-	Backend     string `mapstructure:"backend" json:"backend" validate:"omitempty,oneof=openai" default:"openai"`
-	SaveResult  bool   `mapstructure:"save_result" json:"save-result" validate:"omitempty" default:"true"`
+	Token         string `mapstructure:"token" json:"token" validate:"required"`
+	DatasetName   string `mapstructure:"dataset_name" json:"dataset-name" validate:"required,oneof=random hf heka"`
+	DatasetPath   string `mapstructure:"dataset_path" json:"dataset-path" validate:"required"`
+	HFRevision    string `mapstructure:"hf_revision" json:"hf-revision" validate:"required_unless=DatasetName random" default:"main"`
+	HFSplit       string `mapstructure:"hf_split" json:"hf-split" validate:"required_unless=DatasetName random" default:"train"`
+	NumPrompts    int    `mapstructure:"num_prompts" json:"num-prompts" validate:"required" default:"500"`
+	Seed          int    `mapstructure:"seed" json:"seed" validate:"required" default:"42"`
+	Backend       string `mapstructure:"backend" json:"backend" validate:"omitempty,oneof=openai" default:"openai"`
+	SaveResult    bool   `mapstructure:"save_result" json:"save-result" validate:"omitempty" default:"true"`
 	ResultFilename string `mapstructure:"result_filename" json:"result-filename" validate:"omitempty" default:"metrics.json"`
 }
 
@@ -187,6 +187,10 @@ func GenerateVLLMCommand(vllmConfig *VLLMConfig) ([]string, error) {
 
 		s, ok := v.(string)
 		if ok {
+			// Skip explicitly disabled or unset string options
+			if s == "None" {
+				continue
+			}
 			localArgs = append(localArgs, fmt.Sprintf("--%s", k), s)
 			continue
 		}
@@ -199,7 +203,10 @@ func GenerateVLLMCommand(vllmConfig *VLLMConfig) ([]string, error) {
 
 		b, ok := v.(bool)
 		if ok {
-			localArgs = append(localArgs, fmt.Sprintf("--%s", k), strconv.FormatBool(b))
+			// Only include boolean flags when explicitly true
+			if b {
+				localArgs = append(localArgs, fmt.Sprintf("--%s", k), strconv.FormatBool(b))
+			}
 			continue
 		}
 

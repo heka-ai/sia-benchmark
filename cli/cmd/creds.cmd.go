@@ -27,7 +27,8 @@ func validate() {
 	cloud := cloud_generator.NewCloud(&c)
 	cloud.ValidateCredentials()
 
-	// todo: validate the huggingface cred
+	hf := cloud_generator.NewHFClient(&c)
+	hf.ValidateCredentials()
 
 	logger.Info().Msg("Credentials validated")
 }

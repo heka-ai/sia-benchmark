@@ -5,6 +5,7 @@ import (
 
 	"github.com/heka-ai/benchmark-cli/internal/cloud"
 	"github.com/heka-ai/benchmark-cli/internal/cloud/aws"
+	"github.com/heka-ai/benchmark-cli/internal/cloud/huggingface"
 	log "github.com/heka-ai/benchmark-cli/internal/logs"
 	"github.com/heka-ai/benchmark-cli/pkg/config"
 )
@@ -21,6 +22,10 @@ func NewCloud(config *config.Config) cloud.Cloud {
 		logger.Fatal().Msgf("Unsupported cloud provider: %s", config.Provider)
 		os.Exit(1)
 	}
-
 	return nil
+}
+
+func NewHFClient(config *config.Config) cloud.Cloud {
+	hfClient := huggingface.NewClient(config)
+	return hfClient.Init()
 }

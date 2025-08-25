@@ -31,9 +31,23 @@ go build -o ./bin/bench ./cli/cmd
 
 Once the CLI is installed you can use the benchmark tool by running the following command :
 
+### Valdiate
+
 ```bash
-bench validate --config <path_to_config_file> # validate the config
-bench creds --config <path_to_config_file> # check your cloud credentials
+bench validate --config <path_to_config_file>
+```
+
+Add `--vllm-command` to display vllm command and `--benchmark-command` to display benchmark command. Empty strings in the command will be treated as unset.
+
+### Creds
+
+Dry run to check if provider credentials are valid AND if your dataset comes from huggingface, it will try to validate your hugginface token (fallback to HF_TOKEN env var).
+
+```bash
+HF_TOKEN:${HF_TOKEN} bench creds --config <path_to_config_file> # check your cloud credentials
+```
+
+```bash
 bench create --config <path_to_config_file> # create the instances on the cloud
 bench connection --config <path_to_config_file> # check the connection to the instances
 bench deploy --config <path_to_config_file> # deploy the model on the instance

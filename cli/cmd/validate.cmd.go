@@ -33,10 +33,18 @@ func ValidateCmd() *cobra.Command {
 		},
 	}
 
+	// Default to true so commands are printed during validate unless explicitly disabled
 	cmd.Flags().Bool("vllm-command", false, "The model to use for the VLLM command")
 	cmd.Flags().Bool("benchmark-command", false, "The model to use for the benchmark command")
 
 	return cmd
+}
+
+func formatCmd(binary string, args []string) string {
+	if len(args) == 0 {
+		return binary
+	}
+	return binary + " " + strings.Join(args, " ")
 }
 
 // This only validate that the TOML config file is valid
@@ -53,7 +61,7 @@ func ValidateExec(vllmModel bool, benchmarkModel bool) {
 			return
 		}
 
-		logger.Info().Str("command", "vllm "+strings.Join(localArgs, " ")).Msg("VLLM command generated for your config")
+		logger.Info().Msg("VLLM command generated for your config:\n" + formatCmd("vllm", localArgs))
 	}
 
 	if benchmarkModel {
@@ -64,7 +72,6 @@ func ValidateExec(vllmModel bool, benchmarkModel bool) {
 			logger.Error().Err(err).Msg("Error generating the benchmark command")
 			return
 		}
-
-		logger.Info().Str("command", "/opt/pytorch/bin/python3 "+strings.Join(localArgs, " ")).Msg("Benchmark command generated for your config")
+		logger.Info().Msg("Benchmark command generated for your config:\n" + formatCmd("/opt/pytorch/bin/python3", localArgs))
 	}
 }
