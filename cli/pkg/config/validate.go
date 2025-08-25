@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"reflect"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 	log "github.com/heka-ai/benchmark-cli/internal/logs"
@@ -49,6 +51,10 @@ func InitConfig() {
 		logger.Fatal().Err(err).Msg("Failed to unmarshal config")
 	}
 
+	// Normalize config: treat empty strings as "None" for enum-like fields
+	// and clear zero values for pointer ints where omitempty is desired.
+	normalizeConfig(&localConfig)
+
 	validate := validator.New()
 	err = validate.Struct(localConfig)
 	if err != nil {
@@ -63,4 +69,55 @@ func InitConfig() {
 	logger.Info().Msgf("Config validated successfully")
 
 	config = localConfig
+}
+
+func normalizeConfig(cfg *Config) {
+	if cfg == nil {
+		return
+	}
+
+	// Fill benchmark token from HF_TOKEN if empty
+	if cfg.BenchmarkConfig != nil {
+		if strings.TrimSpace(cfg.BenchmarkConfig.Token) == "" {
+			if env := os.Getenv("HF_TOKEN"); strings.TrimSpace(env) != "" {
+				cfg.BenchmarkConfig.Token = env
+			}
+		}
+	}
+
+	if cfg.VLLMConfig == nil {
+		return
+	}
+
+	v := cfg.VLLMConfig
+	rv := reflect.ValueOf(v).Elem()
+
+	for i := 0; i < rv.NumField(); i++ {
+		f := rv.Field(i)
+		// Only handle pointer fields
+		if f.Kind() != reflect.Ptr {
+			continue
+		}
+		if f.IsNil() {
+			continue
+		}
+		fv := f.Elem()
+		switch fv.Kind() {
+		case reflect.String:
+			if strings.TrimSpace(fv.String()) == "" {
+				val := "None"
+				f.Set(reflect.ValueOf(&val))
+			}
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			if fv.Int() == 0 {
+				f.Set(reflect.Zero(f.Type()))
+			}
+		case reflect.Float32, reflect.Float64:
+			if fv.Float() == 0 {
+				f.Set(reflect.Zero(f.Type()))
+			}
+		default:
+			// Leave bool and other types untouched to preserve explicit values
+		}
+	}
 }

@@ -7,7 +7,7 @@ import (
 )
 
 type Config struct {
-	BenchID         string           `mapstructure:"bench_id" validate:"required"`
+	BenchmarkID     string           `mapstructure:"benchmark_id" validate:"required"`
 	Provider        string           `mapstructure:"provider" validate:"required,oneof=aws gcp scaleway"`
 	InferenceEngine string           `mapstructure:"inference_engine" validate:"required,oneof=vllm"`
 	AWSConfig       *AWSConfig       `mapstructure:"aws" validate:"required_if=Provider aws"`
@@ -18,19 +18,21 @@ type Config struct {
 }
 
 type BenchmarkConfig struct {
-	Token       string `mapstructure:"token" json:"token" validate:"required"`
-	DatasetName string `mapstructure:"dataset_name" json:"dataset-name" validate:"required"`
+	Token       string `mapstructure:"token" json:"token" validate:"omitempty"`
+	DatasetName string `mapstructure:"dataset_name" json:"dataset-name" validate:"required,oneof=random hf heka"`
 	DatasetPath string `mapstructure:"dataset_path" json:"dataset-path" validate:"required"`
-	HFRevision  string `mapstructure:"hf_revision" json:"hf-revision" validate:"required"`
-	HFSplit     string `mapstructure:"hf_split" json:"hf-split" validate:"required"`
-	NumPrompts  int    `mapstructure:"num_prompts" json:"num-prompts" validate:"required"`
-	Seed        int    `mapstructure:"seed" json:"seed" validate:"required"`
-	Backend     string `mapstructure:"backend" json:"backend" validate:"required,oneof=openai"`
+	HFRevision  string `mapstructure:"hf_revision" json:"hf-revision" validate:"required" default:"main"`
+	HFSplit     string `mapstructure:"hf_split" json:"hf-split" validate:"required" default:"train"`
+	NumPrompts  int    `mapstructure:"num_prompts" json:"num-prompts" validate:"required" default:"500"`
+	Seed        int    `mapstructure:"seed" json:"seed" validate:"required" default:"42"`
+	Backend     string `mapstructure:"backend" json:"backend" validate:"omitempty,oneof=openai" default:"openai"`
+	SaveResult  bool   `mapstructure:"save_result" json:"save-result" validate:"omitempty" default:"true"`
+	ResultFilename string `mapstructure:"result_filename" json:"result-filename" validate:"omitempty" default:"metrics.json"`
 }
 
 type VLLMConfig struct {
 	Model                                      string   `mapstructure:"model"  validate:"required"`
-	Task                                       *string  `mapstructure:"task" json:"task" validate:"omitempty,oneof=auto generate embedding embed classify score reward"`
+	Task                                       *string  `mapstructure:"task" json:"task" validate:"omitempty,oneof=None auto generate embedding embed classify score reward"`
 	Tokenizer                                  *string  `mapstructure:"tokenizer" json:"tokenizer" validate:"omitempty"`
 	SkipTokenizerInit                          *bool    `mapstructure:"skip-tokenizer-init" json:"skip-tokenizer-init"`
 	Revision                                   *string  `mapstructure:"revision" json:"revision" validate:"omitempty"`
@@ -40,15 +42,15 @@ type VLLMConfig struct {
 	TrustRemoteCode                            *bool    `mapstructure:"trust-remote-code" json:"trust-remote-code"`
 	AllowedLocalMediaPath                      *string  `mapstructure:"allowed-local-media-path" json:"allowed-local-media-path" validate:"omitempty"`
 	DownloadDir                                *string  `mapstructure:"download-dir" json:"download-dir" validate:"omitempty"`
-	LoadFormat                                 *string  `mapstructure:"load-format" json:"load-format" validate:"omitempty,oneof=auto pt safetensors npcache dummy tensorizer sharded-state gguf bitsandbytes mistral runai-streamer"`
-	ConfigFormat                               *string  `mapstructure:"config-format" json:"config-format" validate:"omitempty,oneof=auto hf mistral"`
+	LoadFormat                                 *string  `mapstructure:"load-format" json:"load-format" validate:"omitempty,oneof=None auto pt safetensors npcache dummy tensorizer sharded-state gguf bitsandbytes mistral runai-streamer"`
+	ConfigFormat                               *string  `mapstructure:"config-format" json:"config-format" validate:"omitempty,oneof=None auto hf mistral"`
 	Dtype                                      *string  `mapstructure:"dtype" json:"dtype" validate:"omitempty,oneof=auto half float16 bfloat16 float float32"`
 	KVCacheDtype                               *string  `mapstructure:"kv-cache-dtype" json:"kv-cache-dtype" validate:"omitempty,oneof=auto fp8 fp8-e5m2 fp8-e4m3"`
 	MaxModelLen                                *int     `mapstructure:"max-model-len" json:"max-model-len" validate:"omitempty"`
-	GuidedDecodingBackend                      *string  `mapstructure:"guided-decoding-backend" json:"guided-decoding-backend" validate:"omitempty,oneof=outlines lm-format-enforcer xgrammar"`
+	GuidedDecodingBackend                      *string  `mapstructure:"guided-decoding-backend" json:"guided-decoding-backend" validate:"omitempty,oneof=None outlines lm-format-enforcer xgrammar"`
 	LogitsProcessorPattern                     *string  `mapstructure:"logits-processor-pattern" json:"logits-processor-pattern" validate:"omitempty"`
-	ModelImpl                                  *string  `mapstructure:"model-impl" json:"model-impl" validate:"omitempty,oneof=auto vllm transformers"`
-	DistributedExecutorBackend                 *string  `mapstructure:"distributed-executor-backend" json:"distributed-executor-backend" validate:"omitempty,oneof=ray mp uni external-launcher"`
+	ModelImpl                                  *string  `mapstructure:"model-impl" json:"model-impl" validate:"omitempty,oneof=None auto vllm transformers"`
+	DistributedExecutorBackend                 *string  `mapstructure:"distributed-executor-backend" json:"distributed-executor-backend" validate:"omitempty,oneof=None ray mp uni external-launcher"`
 	PipelineParallelSize                       *int     `mapstructure:"pipeline-parallel-size" json:"pipeline-parallel-size" validate:"omitempty"`
 	TensorParallelSize                         *int     `mapstructure:"tensor-parallel-size" json:"tensor-parallel-size" validate:"omitempty"`
 	MaxParallelLoadingWorkers                  *int     `mapstructure:"max-parallel-loading-workers" json:"max-parallel-loading-workers" validate:"omitempty"`
@@ -85,14 +87,14 @@ type VLLMConfig struct {
 	MaxLoras                                   *int     `mapstructure:"max-loras" json:"max-loras" validate:"omitempty"`
 	MaxLoraRank                                *int     `mapstructure:"max-lora-rank" json:"max-lora-rank" validate:"omitempty"`
 	LoraExtraVocabSize                         *int     `mapstructure:"lora-extra-vocab-size" json:"lora-extra-vocab-size" validate:"omitempty"`
-	LoraDtype                                  *string  `mapstructure:"lora-dtype" json:"lora-dtype" validate:"omitempty,oneof=auto float16 bfloat16"`
+	LoraDtype                                  *string  `mapstructure:"lora-dtype" json:"lora-dtype" validate:"omitempty,oneof=None auto float16 bfloat16"`
 	LongLoraScalingFactors                     *string  `mapstructure:"long-lora-scaling-factors" json:"long-lora-scaling-factors" validate:"omitempty"`
 	MaxCPULoras                                *int     `mapstructure:"max-cpu-loras" json:"max-cpu-loras" validate:"omitempty"`
 	FullyShardedLoras                          *bool    `mapstructure:"fully-sharded-loras" json:"fully-sharded-loras"`
 	EnablePromptAdapter                        *bool    `mapstructure:"enable-prompt-adapter" json:"enable-prompt-adapter"`
 	MaxPromptAdapters                          *int     `mapstructure:"max-prompt-adapters" json:"max-prompt-adapters" validate:"omitempty"`
 	MaxPromptAdapterToken                      *int     `mapstructure:"max-prompt-adapter-token" json:"max-prompt-adapter-token" validate:"omitempty"`
-	Device                                     *string  `mapstructure:"device" json:"device" validate:"omitempty,oneof=auto cuda neuron cpu openvino tpu xpu hpu"`
+	Device                                     *string  `mapstructure:"device" json:"device" validate:"omitempty,oneof=None auto cuda neuron cpu openvino tpu xpu hpu"`
 	NumSchedulerSteps                          *int     `mapstructure:"num-scheduler-steps" json:"num-scheduler-steps" validate:"omitempty"`
 	MultiStepStreamOutputs                     *bool    `mapstructure:"multi-step-stream-outputs" json:"multi-step-stream-outputs"`
 	SchedulerDelayFactor                       *int     `mapstructure:"scheduler-delay-factor" json:"scheduler-delay-factor" validate:"omitempty"`
@@ -106,18 +108,18 @@ type VLLMConfig struct {
 	SpeculativeDisableByBatchSize              *bool    `mapstructure:"speculative-disable-by-batch-size" json:"speculative-disable-by-batch-size"`
 	NgramPromptLookupMax                       *int     `mapstructure:"ngram-prompt-lookup-max" json:"ngram-prompt-lookup-max" validate:"omitempty"`
 	NgramPromptLookupMin                       *int     `mapstructure:"ngram-prompt-lookup-min" json:"ngram-prompt-lookup-min" validate:"omitempty"`
-	SpecDecodingAcceptanceMethod               *string  `mapstructure:"spec-decoding-acceptance-method" json:"spec-decoding-acceptance-method" validate:"omitempty,oneof=rejection-sampler typical-acceptance-sampler"`
+	SpecDecodingAcceptanceMethod               *string  `mapstructure:"spec-decoding-acceptance-method" json:"spec-decoding-acceptance-method" validate:"omitempty,oneof=None rejection-sampler typical-acceptance-sampler"`
 	TypicalAcceptanceSamplerPosteriorThreshold *float64 `mapstructure:"typical-acceptance-sampler-posterior-threshold" json:"typical-acceptance-sampler-posterior-threshold" validate:"omitempty"`
 	TypicalAcceptanceSamplerPosteriorAlpha     *float64 `mapstructure:"typical-acceptance-sampler-posterior-alpha" json:"typical-acceptance-sampler-posterior-alpha" validate:"omitempty"`
 	DisableLogprobsDuringSpecDecoding          *bool    `mapstructure:"disable-logprobs-during-spec-decoding" json:"disable-logprobs-during-spec-decoding"`
 	ModelLoaderExtraConfig                     *string  `mapstructure:"model-loader-extra-config" json:"model-loader-extra-config" validate:"omitempty"`
-	IgnorePatterns                             *string  `mapstructure:"ignore-patterns" json:"ignore-patterns" validate:"omitempty"`
+	IgnorePatterns                             []string `mapstructure:"ignore-patterns" json:"ignore-patterns" validate:"omitempty"`
 	PreemptionMode                             *string  `mapstructure:"preemption-mode" json:"preemption-mode" validate:"omitempty"`
 	QLoraAdapterNameOrPath                     *string  `mapstructure:"qlora-adapter-name-or-path" json:"qlora-adapter-name-or-path" validate:"omitempty"`
 	OtlpTracesEndpoint                         *string  `mapstructure:"otlp-traces-endpoint" json:"otlp-traces-endpoint" validate:"omitempty"`
 	CollectDetailedTraces                      *bool    `mapstructure:"collect-detailed-traces" json:"collect-detailed-traces"`
 	DisableAsyncOutputProc                     *bool    `mapstructure:"disable-async-output-proc" json:"disable-async-output-proc"`
-	SchedulingPolicy                           *string  `mapstructure:"scheduling-policy" json:"scheduling-policy" validate:"omitempty,oneof=fcfs priority"`
+	SchedulingPolicy                           *string  `mapstructure:"scheduling-policy" json:"scheduling-policy" validate:"omitempty,oneof=None fcfs priority"`
 	OverrideNeuronConfig                       *string  `mapstructure:"override-neuron-config" json:"override-neuron-config" validate:"omitempty"`
 	OverridePoolerConfig                       *string  `mapstructure:"override-pooler-config" json:"override-pooler-config" validate:"omitempty"`
 	CompilationConfig                          *string  `mapstructure:"compilation-config" json:"compilation-config" validate:"omitempty"`

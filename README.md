@@ -20,6 +20,13 @@ The CLI is made to run a complete benchmark on any LLM, on most of the popular c
 5. View the results
 6. Destroy the instances
 
+## Initialization (dev mode)
+
+```bash
+mkdir -p ./bin
+go build -o ./bin/bench ./cli/cmd
+```
+
 ## Utilization
 
 Once the CLI is installed you can use the benchmark tool by running the following command :
