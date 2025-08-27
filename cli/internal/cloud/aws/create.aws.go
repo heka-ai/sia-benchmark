@@ -28,12 +28,17 @@ func (c *AWSClient) Create() error {
 	// set the basic benchmark config env var
 	userData := fmt.Sprintf(`#!/bin/bash
 echo "API_KEY=%s" > /home/ubuntu/.bashrc
+echo "HF_TOKEN=%s" >> /home/ubuntu/.bashrc
 TOML_FILE='
 %s
 '
 touch /home/ubuntu/config.toml
 echo "$TOML_FILE" > /home/ubuntu/config.toml
-		`, c.config.APIKey, configString)
+# Also export HF_TOKEN for the api.service (EnvironmentFile)
+printf 'HF_TOKEN=%s\n' | sudo tee /etc/default/benchmark-api >/dev/null
+sudo systemctl daemon-reload
+sudo systemctl restart api
+		`, c.config.APIKey, c.config.BenchmarkConfig.Token, configString, c.config.BenchmarkConfig.Token)
 
 	// Optional networking from config
 	subnetID := viper.GetString("aws.subnet_id")

@@ -2,8 +2,18 @@
 
 echo "Installing the API"
 
-curl -L https://github.com/heka-ai/sia-benchmark/releases/latest/download/api-linux-amd64.tar.gz -o /tmp/api-linux-amd64.tar.gz
-tar -xzf /tmp/api-linux-amd64.tar.gz -C /home/ubuntu/
+# Ensure Go toolchain is available
+if ! command -v go >/dev/null 2>&1; then
+	sudo apt-get update -y
+	sudo apt-get install -y golang-go
+fi
+
+# Build API from local repo
+cd /home/ubuntu/benchmark-cli/api || exit 1
+
+go mod download
+
+go build -o /home/ubuntu/api ./cmd || exit 1
 
 chmod +x /home/ubuntu/api
 
