@@ -24,7 +24,7 @@ func (c *AWSClient) Deploy() error {
 			logger.Fatal().Msg("Instance has no public IP address")
 		}
 
-		err := c.cli.Deploy(*instance.PublicIpAddress, c.config.InferenceEngine)
+		err := c.cli.Deploy(*instance.PublicIpAddress, c.config.InferenceEngine, 8000)
 		logger.Info().Str("ip", *instance.PublicIpAddress).Msg("Deployment started")
 
 		if err != nil {
@@ -34,7 +34,7 @@ func (c *AWSClient) Deploy() error {
 
 	maxRetries := 36
 	for i := 0; i < maxRetries; i++ {
-		ready, err := c.cli.ModelStatus(gpuInstanceIP)
+		ready, err := c.cli.ModelStatus(gpuInstanceIP, 8000)
 		if err != nil {
 			logger.Error().Err(err).Msg("Cannot get the model status")
 		}
