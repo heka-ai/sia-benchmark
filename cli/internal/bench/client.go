@@ -57,9 +57,9 @@ func (c *Client) WaitForInstances(benchIP, llmIP string) error {
 
 // deploy the model on the instance
 // will also upload the config to the instance
-func (c *Client) Deploy(ip string, engine string) error {
+func (c *Client) Deploy(ip string, engine string, port int) error {
 	// config to string
-	request, err := http.NewRequest("GET", fmt.Sprintf("http://%s:8001/%s/start", ip, engine), nil)
+	request, err := http.NewRequest("GET", fmt.Sprintf("http://%s:8001/%s/start?port=%d", ip, engine, port), nil)
 	if err != nil {
 		return err
 	}
@@ -102,11 +102,11 @@ func (c *Client) HealthCheck(ip string) error {
 	return nil
 }
 
-func (c *Client) WaitForLLM(ip string) error {
+func (c *Client) WaitForLLM(ip string, port int) error {
 	done := false
 
 	for i := 0; i < maxIterations && !done; i++ {
-		done, _ := c.ModelStatus(ip)
+		done, _ := c.ModelStatus(ip, port)
 
 		if done {
 			return nil
@@ -118,8 +118,8 @@ func (c *Client) WaitForLLM(ip string) error {
 	return fmt.Errorf("LLM is not ready after %d iterations", maxIterations)
 }
 
-func (c *Client) ModelStatus(ip string) (bool, error) {
-	res, err := http.Get(fmt.Sprintf("http://%s:8000/v1/models", ip))
+func (c *Client) ModelStatus(ip string, port int) (bool, error) {
+	res, err := http.Get(fmt.Sprintf("http://%s:%d/v1/models", ip, port))
 	if err != nil {
 		return false, err
 	}

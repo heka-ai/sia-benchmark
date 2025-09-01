@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -56,12 +57,21 @@ func (v *VLLM) GetLogsArchive() []string {
 }
 
 func (v *VLLM) Start(ctx context.Context) error {
+	return v.StartWithPort(ctx, 8000)
+}
+
+// StartWithPort launches vLLM specifying the serving port. It appends
+// `--port <port>` to the generated vllm arguments.
+func (v *VLLM) StartWithPort(ctx context.Context, port int) error {
 	logger.Info().Str("model", v.config.GetConfig().VLLMConfig.Model).Str("token", v.config.GetConfig().BenchmarkConfig.Token).Msg("Starting the VLLM service")
 
 	localArgs, err := cliConfig.GenerateVLLMCommand(v.config.GetConfig().VLLMConfig)
 	if err != nil {
 		return err
 	}
+
+	// Inject the port flag for vllm serve.
+	localArgs = append(localArgs, "--port", fmt.Sprintf("%d", port))
 
 	logger.Info().Str("command", "vllm "+strings.Join(localArgs, " ")).Msg("Launching VLLM with the following command")
 
