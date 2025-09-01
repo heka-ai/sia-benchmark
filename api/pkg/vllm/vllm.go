@@ -3,6 +3,7 @@ package vllm
 import (
 	"bufio"
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"strings"
@@ -18,8 +19,6 @@ import (
 )
 
 var logger = log.GetLogger("vllm")
-
-var PATH_TO_VLLM = "/usr/local/bin/vllm"
 
 var VLLMModule = fx.Module("vllm",
 	fx.Provide(NewVLLM),
@@ -66,7 +65,13 @@ func (v *VLLM) Start(ctx context.Context) error {
 
 	logger.Info().Str("command", "vllm "+strings.Join(localArgs, " ")).Msg("Launching VLLM with the following command")
 
-	v.cmd = exec.CommandContext(ctx, PATH_TO_VLLM, localArgs...)
+	// Resolve the path to the vllm binary to ensure vllm is installed on host machine.
+	bin, err := resolveVLLMBinary()
+	if err != nil {
+		return err
+	}
+
+	v.cmd = exec.CommandContext(ctx, bin, localArgs...)
 	v.cmd.Env = append(os.Environ(), "HF_TOKEN="+v.config.GetConfig().BenchmarkConfig.Token)
 
 	stdout, err := v.cmd.StdoutPipe()
@@ -128,4 +133,12 @@ func (v *VLLM) Stop(ctx context.Context) error {
 		// Force terminate if it did not exit in time.
 		return v.cmd.Process.Kill()
 	}
+}
+
+// resolveVLLMBinary determines the path to the vllm executable.
+func resolveVLLMBinary() (string, error) {
+	if p, err := exec.LookPath("vllm"); err == nil {
+		return p, nil
+	}
+	return "", errors.New("vllm not installed: ensure 'vllm' is in PATH")
 }
