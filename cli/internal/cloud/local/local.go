@@ -9,7 +9,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/spf13/viper"
@@ -194,6 +196,12 @@ func (c *LocalClient) Create() error {
 
 	logger.Info().Str("pid", fmt.Sprintf("%d", cmd.Process.Pid)).Str("dir", repoRoot).Msg("Local provider: starting API server on :8001")
 
+	// Write PID file so we can stop it later in Destroy
+	pidFile := filepath.Join(repoRoot, ".local_api.pid")
+	if writeErr := os.WriteFile(pidFile, []byte(strconv.Itoa(cmd.Process.Pid)), 0o644); writeErr != nil {
+		logger.Warn().Err(writeErr).Str("pid_file", pidFile).Msg("Local provider: failed to write PID file")
+	}
+
 	// Wait for the server to become healthy
 	deadline := time.Now().Add(20 * time.Second)
 	for time.Now().Before(deadline) {
@@ -219,7 +227,51 @@ func (c *LocalClient) CreateBenchInstance() error {
 	return nil
 }
 func (c *LocalClient) Destroy() error {
-	logger.Warn().Msg("Local provider: nothing to destroy (no-op)")
+	// Try to stop API server on :8001
+	repoRoot, err := findRepoRoot()
+	if err != nil {
+		logger.Error().Err(err).Msg("Local provider: failed to locate repository root to stop API server")
+		return err
+	}
+
+	pidFile := filepath.Join(repoRoot, ".local_api.pid")
+	stopped := false
+
+	if data, readErr := os.ReadFile(pidFile); readErr == nil {
+		pid, convErr := strconv.Atoi(strings.TrimSpace(string(data)))
+		if convErr == nil && pid > 1 {
+			if proc, findErr := os.FindProcess(pid); findErr == nil {
+				_ = proc.Signal(syscall.SIGTERM)
+				// Wait briefly for shutdown
+				client := &http.Client{Timeout: 500 * time.Millisecond}
+				deadline := time.Now().Add(5 * time.Second)
+				for time.Now().Before(deadline) {
+					if _, err := client.Get("http://127.0.0.1:8001/health"); err != nil {
+						stopped = true
+						break
+					}
+					time.Sleep(1 * time.Second)
+				}
+			}
+		}
+		// Cleanup pid file regardless
+		_ = os.Remove(pidFile)
+	}
+
+	if !stopped {
+		// Fallback: try to discover and kill any process listening on :8001
+		if pids, lerr := discoverPIDsOnPort("8001"); lerr == nil {
+			for _, p := range pids {
+				if proc, ferr := os.FindProcess(p); ferr == nil {
+					_ = proc.Signal(syscall.SIGTERM)
+				}
+			}
+			// Give time to release the port
+			time.Sleep(1 * time.Second)
+		}
+	}
+
+	logger.Info().Msg("Local provider: stopped API server on :8001 (if running)")
 	return nil
 }
 
@@ -251,4 +303,43 @@ func findRepoRoot() (string, error) {
 	}
 
 	return "", errors.New("repository root not found; expected go.work or api/go.mod")
+}
+
+// discoverPIDsOnPort tries to find PIDs listening on the given TCP port using lsof or fuser
+func discoverPIDsOnPort(port string) ([]int, error) {
+	// Try lsof first
+	cmd := exec.Command("lsof", "-t", "-i", ":"+port, "-sTCP:LISTEN")
+	out, err := cmd.Output()
+	if err == nil && len(out) > 0 {
+		lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+		var pids []int
+		for _, l := range lines {
+			if l = strings.TrimSpace(l); l != "" {
+				if pid, perr := strconv.Atoi(l); perr == nil {
+					pids = append(pids, pid)
+				}
+			}
+		}
+		if len(pids) > 0 {
+			return pids, nil
+		}
+	}
+
+	// Fallback to fuser
+	cmd = exec.Command("fuser", "-n", "tcp", port)
+	out, err = cmd.Output()
+	if err == nil && len(out) > 0 {
+		fields := strings.Fields(string(out))
+		var pids []int
+		for _, f := range fields {
+			if pid, perr := strconv.Atoi(strings.TrimSpace(f)); perr == nil {
+				pids = append(pids, pid)
+			}
+		}
+		if len(pids) > 0 {
+			return pids, nil
+		}
+	}
+
+	return nil, errors.New("no pids discovered on port")
 }

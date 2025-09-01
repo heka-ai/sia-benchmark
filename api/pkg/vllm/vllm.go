@@ -6,11 +6,15 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
+	"time"
+
+	"go.uber.org/fx"
+
+	cliConfig "github.com/heka-ai/benchmark-cli/pkg/config"
 
 	apiConfig "github.com/heka-ai/benchmark-api/internal/config"
 	"github.com/heka-ai/benchmark-api/internal/log"
-	cliConfig "github.com/heka-ai/benchmark-cli/pkg/config"
-	"go.uber.org/fx"
 )
 
 var logger = log.GetLogger("vllm")
@@ -108,5 +112,20 @@ func (v *VLLM) Start(ctx context.Context) error {
 func (v *VLLM) Stop(ctx context.Context) error {
 	logger.Info().Msg("Stopping VLLM")
 
-	return v.cmd.Process.Kill()
+	// If Start was never called or the process was not created, there is nothing to stop.
+	if v == nil || v.cmd == nil || v.cmd.Process == nil {
+		logger.Info().Msg("VLLM process not started; nothing to stop")
+		return nil
+	}
+
+	// Attempt a graceful shutdown first: send SIGTERM and wait for the process to exit.
+	_ = v.cmd.Process.Signal(syscall.SIGTERM)
+
+	select {
+	case <-v.doneCh:
+		return nil
+	case <-time.After(5 * time.Second):
+		// Force terminate if it did not exit in time.
+		return v.cmd.Process.Kill()
+	}
 }
