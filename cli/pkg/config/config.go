@@ -3,7 +3,10 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 type Config struct {
@@ -28,6 +31,7 @@ type BenchmarkConfig struct {
 	Backend        string `mapstructure:"backend" json:"backend" validate:"omitempty,oneof=openai" default:"openai"`
 	SaveResult     bool   `mapstructure:"save_result" json:"save-result" validate:"omitempty" default:"true"`
 	ResultFilename string `mapstructure:"result_filename" json:"result-filename" validate:"omitempty" default:"metrics.json"`
+	ScriptPath     string `mapstructure:"script_path" json:"script-path" validate:"omitempty"`
 }
 
 type VLLMConfig struct {
@@ -216,8 +220,13 @@ func GenerateVLLMCommand(vllmConfig *VLLMConfig) ([]string, error) {
 	return localArgs, nil
 }
 
-func GenerateBenchmarkCommand(conf *Config, ip string) ([]string, error) {
-	localArgs := []string{"/home/ubuntu/ec2/cpu/benchmark.py", "--backend", conf.BenchmarkConfig.Backend, "--base-url", fmt.Sprintf("http://%s:8000", ip)}
+func GenerateBenchmarkCommand(conf *Config, ip string, port int) ([]string, error) {
+	script := resolveBenchmarkScriptPath(conf)
+	if strings.TrimSpace(script) == "" {
+		return nil, fmt.Errorf("benchmark.py not found; set benchmark.script_path or BENCHMARK_SCRIPT")
+	}
+
+	localArgs := []string{script, "--backend", conf.BenchmarkConfig.Backend, "--base-url", fmt.Sprintf("http://%s:%d", ip, port)}
 
 	var inInterface map[string]interface{}
 	inrec, _ := json.Marshal(conf.BenchmarkConfig)
@@ -228,7 +237,7 @@ func GenerateBenchmarkCommand(conf *Config, ip string) ([]string, error) {
 			continue
 		}
 
-		if k == "token" || k == "backend" {
+		if k == "token" || k == "backend" || k == "script_path" {
 			continue
 		}
 
@@ -255,4 +264,39 @@ func GenerateBenchmarkCommand(conf *Config, ip string) ([]string, error) {
 	localArgs = append(localArgs, "--model", conf.VLLMConfig.Model)
 
 	return localArgs, nil
+}
+
+// resolveBenchmarkScriptPath finds the benchmark.py path in a portable way:
+// 1) BENCHMARK_SCRIPT env var
+// 2) benchmark.script_path in TOML
+// 3) common repo-relative locations
+func resolveBenchmarkScriptPath(conf *Config) string {
+	// 1) env var
+	if s := strings.TrimSpace(os.Getenv("BENCHMARK_SCRIPT")); s != "" {
+		return s
+	}
+	// 2) from config
+	if conf != nil && conf.BenchmarkConfig != nil {
+		if s := strings.TrimSpace(conf.BenchmarkConfig.ScriptPath); s != "" {
+			return s
+		}
+	}
+	// 3) candidates relative to current working dir
+	candidates := []string{
+		"instance-builder/aws/ec2/cpu/benchmark.py",
+		"./instance-builder/aws/ec2/cpu/benchmark.py",
+		"benchmark.py",
+		"./benchmark.py",
+		"/home/ubuntu/ec2/cpu/benchmark.py",
+	}
+	for _, c := range candidates {
+		abs, err := filepath.Abs(c)
+		if err != nil {
+			continue
+		}
+		if st, err := os.Stat(abs); err == nil && !st.IsDir() {
+			return abs
+		}
+	}
+	return ""
 }

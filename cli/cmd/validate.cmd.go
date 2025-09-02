@@ -3,8 +3,9 @@ package main
 import (
 	"strings"
 
-	"github.com/heka-ai/benchmark-cli/pkg/config"
 	"github.com/spf13/cobra"
+
+	"github.com/heka-ai/benchmark-cli/pkg/config"
 )
 
 // validate the config of the benchmark making sure all the right credentials are set
@@ -67,7 +68,7 @@ func ValidateExec(vllmModel bool, benchmarkModel bool) {
 	if benchmarkModel {
 		cfg := config.GetConfig()
 
-		localArgs, err := config.GenerateBenchmarkCommand(&cfg, "127.0.0.1")
+		localArgs, err := config.GenerateBenchmarkCommand(&cfg, "127.0.0.1", 8000) // 8000 is uses as default just for the validation.
 		if err != nil {
 			logger.Error().Err(err).Msg("Error generating the benchmark command")
 			return

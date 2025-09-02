@@ -146,15 +146,18 @@ func (c *Client) ModelStatus(ip string, port int) (bool, error) {
 	return false, nil
 }
 
-func (c *Client) RunBenchmark(ip string, llmIp string, engineType string) error {
+func (c *Client) RunBenchmark(ip string, llmIp string, engineType string, vllmPort int, resultFilename string) error {
 	request, err := http.NewRequest("POST", fmt.Sprintf("http://%s:8001/bench/%s/start", ip, engineType), nil)
 	if err != nil {
 		return err
 	}
 
-	body, err := json.Marshal(map[string]string{
-		"ip": llmIp,
-	})
+	payload := map[string]interface{}{
+		"ip":              llmIp,
+		"port":            vllmPort,
+		"result_filename": resultFilename,
+	}
+	body, err := json.Marshal(payload)
 
 	if err != nil {
 		return err
@@ -237,4 +240,21 @@ func (c *Client) GetLogs(ip string, logsType string) (string, error) {
 	}
 
 	return string(body), nil
+}
+
+func (c *Client) FollowBenchLogs(ip string, engineType string, interval time.Duration, print bool) error {
+	last := ""
+	for {
+		logs, err := c.GetLogs(ip, engineType)
+		if err != nil {
+			return err
+		}
+		if print {
+			if logs != last {
+				fmt.Print(logs)
+				last = logs
+			}
+		}
+		time.Sleep(interval)
+	}
 }
