@@ -18,15 +18,15 @@ type Config struct {
 }
 
 type BenchmarkConfig struct {
-	Token         string `mapstructure:"token" json:"token" validate:"required"`
-	DatasetName   string `mapstructure:"dataset_name" json:"dataset-name" validate:"required,oneof=random hf heka"`
-	DatasetPath   string `mapstructure:"dataset_path" json:"dataset-path" validate:"required"`
-	HFRevision    string `mapstructure:"hf_revision" json:"hf-revision" validate:"required_unless=DatasetName random" default:"main"`
-	HFSplit       string `mapstructure:"hf_split" json:"hf-split" validate:"required_unless=DatasetName random" default:"train"`
-	NumPrompts    int    `mapstructure:"num_prompts" json:"num-prompts" validate:"required" default:"500"`
-	Seed          int    `mapstructure:"seed" json:"seed" validate:"required" default:"42"`
-	Backend       string `mapstructure:"backend" json:"backend" validate:"omitempty,oneof=openai" default:"openai"`
-	SaveResult    bool   `mapstructure:"save_result" json:"save-result" validate:"omitempty" default:"true"`
+	Token          string `mapstructure:"token" json:"token" validate:"required"`
+	DatasetName    string `mapstructure:"dataset_name" json:"dataset-name" validate:"required,oneof=random hf heka"`
+	DatasetPath    string `mapstructure:"dataset_path" json:"dataset-path" validate:"required"`
+	HFRevision     string `mapstructure:"hf_revision" json:"hf-revision" validate:"required_unless=DatasetName random" default:"main"`
+	HFSplit        string `mapstructure:"hf_split" json:"hf-split" validate:"required_unless=DatasetName random" default:"train"`
+	NumPrompts     int    `mapstructure:"num_prompts" json:"num-prompts" validate:"required" default:"500"`
+	Seed           int    `mapstructure:"seed" json:"seed" validate:"required" default:"42"`
+	Backend        string `mapstructure:"backend" json:"backend" validate:"omitempty,oneof=openai" default:"openai"`
+	SaveResult     bool   `mapstructure:"save_result" json:"save-result" validate:"omitempty" default:"true"`
 	ResultFilename string `mapstructure:"result_filename" json:"result-filename" validate:"omitempty" default:"metrics.json"`
 }
 
@@ -63,7 +63,7 @@ type VLLMConfig struct {
 	Seed                                       *int     `mapstructure:"seed" json:"seed" validate:"omitempty"`
 	SwapSpace                                  *int     `mapstructure:"swap-space" json:"swap-space" validate:"omitempty"`
 	CPUOffloadGB                               *int     `mapstructure:"cpu-offload-gb" json:"cpu-offload-gb" validate:"omitempty"`
-	GPUMemoryUtilization                       *int     `mapstructure:"gpu-memory-utilization" json:"gpu-memory-utilization" validate:"omitempty"`
+	GPUMemoryUtilization                       *float64 `mapstructure:"gpu-memory-utilization" json:"gpu-memory-utilization" validate:"omitempty"`
 	NumGPUBlocksOverride                       *int     `mapstructure:"num-gpu-blocks-override" json:"num-gpu-blocks-override" validate:"omitempty"`
 	MaxNumBatchedTokens                        *int     `mapstructure:"max-num-batched-tokens" json:"max-num-batched-tokens" validate:"omitempty"`
 	MaxNumSeqs                                 *int     `mapstructure:"max-num-seqs" json:"max-num-seqs" validate:"omitempty"`
@@ -195,9 +195,9 @@ func GenerateVLLMCommand(vllmConfig *VLLMConfig) ([]string, error) {
 			continue
 		}
 
-		number, ok := v.(float64)
-		if ok {
-			localArgs = append(localArgs, fmt.Sprintf("--%s", k), strconv.FormatFloat(number, 'f', 0, 64))
+		if number, ok := v.(float64); ok {
+			// preserve decimals for float flags
+			localArgs = append(localArgs, fmt.Sprintf("--%s", k), strconv.FormatFloat(number, 'f', -1, 64))
 			continue
 		}
 
@@ -238,9 +238,8 @@ func GenerateBenchmarkCommand(conf *Config, ip string) ([]string, error) {
 			continue
 		}
 
-		number, ok := v.(float64)
-		if ok {
-			localArgs = append(localArgs, fmt.Sprintf("--%s", k), strconv.FormatFloat(number, 'f', 0, 64))
+		if number, ok := v.(float64); ok {
+			localArgs = append(localArgs, fmt.Sprintf("--%s", k), strconv.FormatFloat(number, 'f', -1, 64))
 			continue
 		}
 
