@@ -226,7 +226,13 @@ func GenerateBenchmarkCommand(conf *Config, ip string, port int) ([]string, erro
 		return nil, fmt.Errorf("benchmark.py not found; set benchmark.script_path or BENCHMARK_SCRIPT")
 	}
 
-	localArgs := []string{script, "--backend", conf.BenchmarkConfig.Backend, "--base-url", fmt.Sprintf("http://%s:%d", ip, port)}
+	// Compute effective backend: fallback to top-level InferenceEngine when unset
+	effectiveBackend := strings.TrimSpace(conf.BenchmarkConfig.Backend)
+	if effectiveBackend == "" {
+		effectiveBackend = strings.TrimSpace(conf.InferenceEngine)
+	}
+
+	localArgs := []string{script, "--backend", effectiveBackend, "--base-url", fmt.Sprintf("http://%s:%d", ip, port)}
 
 	var inInterface map[string]interface{}
 	inrec, _ := json.Marshal(conf.BenchmarkConfig)
