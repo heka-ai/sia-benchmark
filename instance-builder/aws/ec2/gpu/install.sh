@@ -11,6 +11,8 @@ apt-get install -y \
 
 echo "Installing vllm"
 
-pip install vllm==0.8.5.post1
+pip install --pre "vllm==0.10.1+gptoss" \
+  --extra-index-url https://wheels.vllm.ai/gpt-oss/ \
+  --extra-index-url https://download.pytorch.org/whl/nightly/cu128
 
 echo "Installation complete"

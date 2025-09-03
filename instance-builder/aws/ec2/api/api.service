@@ -5,9 +5,10 @@ After=network.target
 [Service]
 ExecStart=/home/ubuntu/api --config /home/ubuntu/config.toml
 Restart=always
+RestartSec=5
 User=ubuntu
 Group=ubuntu
-EnvironmentFile=/etc/default/benchmark-api
+EnvironmentFile=-/etc/default/benchmark-api
 
 [Install]
 WantedBy=multi-user.target
