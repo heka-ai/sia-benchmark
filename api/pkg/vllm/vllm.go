@@ -3,7 +3,6 @@ package vllm
 import (
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -76,6 +75,7 @@ func (v *VLLM) StartWithPort(ctx context.Context, port int) error {
 	logger.Info().Str("command", "vllm "+strings.Join(localArgs, " ")).Msg("Launching VLLM with the following command")
 
 	// Resolve the path to the vllm binary to ensure vllm is installed on host machine.
+	logger.Info().Str("PATH", os.Getenv("PATH")).Msg("Environment PATH before resolving vllm")
 	bin, err := resolveVLLMBinary()
 	if err != nil {
 		return err
@@ -150,5 +150,18 @@ func resolveVLLMBinary() (string, error) {
 	if p, err := exec.LookPath("vllm"); err == nil {
 		return p, nil
 	}
-	return "", errors.New("vllm not installed: ensure 'vllm' is in PATH")
+	// Fallback to common installation locations
+	candidates := []string{
+		"/opt/pytorch/bin/vllm",
+		"/usr/local/bin/vllm",
+		"/usr/bin/vllm",
+	}
+	for _, c := range candidates {
+		if st, err := os.Stat(c); err == nil && !st.IsDir() {
+			if st.Mode()&0111 != 0 {
+				return c, nil
+			}
+		}
+	}
+	return "", fmt.Errorf("vllm not installed or not in PATH (PATH=%s)", os.Getenv("PATH"))
 }

@@ -24,7 +24,7 @@ func BenchCmd() *cobra.Command {
 
 	cmd.Flags().Int("vllm-port", 8000, "Port where vLLM listens (default 8000)")
 	cmd.Flags().String("result-filename", "./metrics.json", "Where to write benchmark results")
-	cmd.Flags().Bool("follow", true, "Stream benchmark logs until completion")
+	cmd.Flags().Bool("wait", true, "Stream benchmark logs until completion")
 
 	// Bind flags to Viper keys for global access
 	_ = viper.BindPFlag("vllm_port", cmd.Flags().Lookup("vllm-port"))
@@ -68,9 +68,8 @@ func RunExec() {
 		logger.Fatal().Err(err).Msg("Cannot run benchmark on bench instance")
 	}
 
-	if wait {
-		_ = client.FollowBenchLogs(benchInstanceIP, c.InferenceEngine, 1*time.Second, true)
-	}
-
 	logger.Info().Msg("Benchmark started on the bench instance")
+	if wait {
+		_ = client.FollowBenchLogsWithTimeout(benchInstanceIP, "bench", 1*time.Second, 60*time.Second, true)
+	}
 }

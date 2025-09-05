@@ -1,1 +1,0 @@
-cpu: ami-0c0d05f58fe7e0100 ami_benchmarks_cpu_20250903112710 2025-09-03 11:33:24

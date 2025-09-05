@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	log "github.com/heka-ai/benchmark-cli/internal/logs"
@@ -74,7 +75,13 @@ func (c *Client) Deploy(ip string, engine string, port int) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to deploy: %s", resp.Status)
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyStr := strings.TrimSpace(string(bodyBytes))
+		if len(bodyStr) > 4096 {
+			bodyStr = bodyStr[:4096] + "...(truncated)"
+		}
+		logger.Error().Int("status_code", resp.StatusCode).Str("status", resp.Status).Str("body", bodyStr).Msg("Deploy request failed")
+		return fmt.Errorf("failed to deploy: %s - %s", resp.Status, bodyStr)
 	}
 
 	return nil
@@ -174,7 +181,13 @@ func (c *Client) RunBenchmark(ip string, llmIp string, engineType string, vllmPo
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to run benchmark: %s", resp.Status)
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyStr := strings.TrimSpace(string(bodyBytes))
+		if len(bodyStr) > 4096 {
+			bodyStr = bodyStr[:4096] + "...(truncated)"
+		}
+		logger.Error().Int("status_code", resp.StatusCode).Str("status", resp.Status).Str("body", bodyStr).Msg("Run benchmark request failed")
+		return fmt.Errorf("failed to run benchmark: %s - %s", resp.Status, bodyStr)
 	}
 
 	return nil
@@ -216,7 +229,20 @@ func (c *Client) GetResults(ip string, engineType string) (*results.Results, err
 }
 
 func (c *Client) GetLogs(ip string, logsType string) (string, error) {
-	request, err := http.NewRequest("GET", fmt.Sprintf("http://%s:8001/logs/%s", ip, logsType), nil)
+	var endpoint string
+
+	// Map logsType to the correct API endpoint
+	switch logsType {
+	case "llm", "vllm":
+		endpoint = fmt.Sprintf("http://%s:8001/vllm/logs", ip)
+	case "bench", "benchmark":
+		endpoint = fmt.Sprintf("http://%s:8001/bench/vllm/logs", ip)
+	default:
+		// For backward compatibility, try the old endpoint
+		endpoint = fmt.Sprintf("http://%s:8001/logs/%s", ip, logsType)
+	}
+
+	request, err := http.NewRequest("GET", endpoint, nil)
 	if err != nil {
 		return "", err
 	}
@@ -255,6 +281,37 @@ func (c *Client) FollowBenchLogs(ip string, engineType string, interval time.Dur
 				last = logs
 			}
 		}
+		time.Sleep(interval)
+	}
+}
+
+func (c *Client) FollowBenchLogsWithTimeout(ip string, engineType string, interval time.Duration, timeout time.Duration, print bool) error {
+	last := ""
+	lastActivity := time.Now()
+
+	for {
+		logs, err := c.GetLogs(ip, engineType)
+		if err != nil {
+			return err
+		}
+
+		// Check if we received new logs
+		if logs != last {
+			if print {
+				fmt.Print(logs)
+			}
+			last = logs
+			lastActivity = time.Now() // Reset the timeout when we get new logs
+		}
+
+		// Check if we've been idle for too long
+		if time.Since(lastActivity) > timeout {
+			if print {
+				fmt.Printf("\n[Timeout] No new logs received for %v, stopping...\n", timeout)
+			}
+			return nil
+		}
+
 		time.Sleep(interval)
 	}
 }

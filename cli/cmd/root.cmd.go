@@ -21,6 +21,7 @@ func RootCmd() *cobra.Command {
 	rootCmd.AddCommand(ResultsCmd())
 	rootCmd.AddCommand(DestroyCmd())
 	rootCmd.AddCommand(InstanceBuildCmd())
+	rootCmd.AddCommand(LogsCmd())
 
 	// Make config a persistent flag so subcommands accept it
 	rootCmd.PersistentFlags().StringP("config", "c", "bench.toml", "Path to the config file")

@@ -62,7 +62,7 @@ func ValidateExec(vllmModel bool, benchmarkModel bool) {
 			return
 		}
 
-		logger.Info().Msg("VLLM command generated for your config:\n" + formatCmd("vllm", localArgs))
+		logger.Info().Msg("VLLM command generated for your config:\n" + formatCmd("HF_TOKEN="+cfg.BenchmarkConfig.Token+" vllm", localArgs))
 	}
 
 	if benchmarkModel {

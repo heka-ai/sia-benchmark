@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/spf13/cobra"
 
 	bench "github.com/heka-ai/benchmark-cli/internal/bench"
@@ -58,10 +60,11 @@ func deploy(wait bool, port int) {
 		logger.Info().Msg("Waiting for the LLM to be ready")
 		llmClient.WaitForLLM(llmInstanceIP, port)
 		logger.Info().Msg("LLM is running")
+
+		// Show logs while waiting
+		logger.Info().Msg("Streaming LLM logs...")
+		llmClient.FollowBenchLogsWithTimeout(llmInstanceIP, "llm", 1*time.Second, 60*time.Second, true)
 	} else {
 		logger.Info().Msg("Model is downloading and being initialized on the LLM instance, wait a few minutes")
 	}
-
-	// todo: add a command to get the logs from the LLM instance / engine
-
 }
