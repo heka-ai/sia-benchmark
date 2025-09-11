@@ -25,38 +25,32 @@ On the client side, run:
 
 import argparse
 import asyncio
-import base64
-import io
 import json
 import os
+import tomli
 import random
 import time
 import warnings
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Any, AsyncGenerator, Collection, Dict, List, Optional, Tuple
+from typing import AsyncGenerator, List, Optional, Tuple
 
 import numpy as np
+from tqdm.asyncio import tqdm
+from transformers import PreTrainedTokenizerBase
+
 from backend_request_func import (
     ASYNC_REQUEST_FUNCS,
     RequestFuncInput,
     RequestFuncOutput,
 )
-from datasets import load_dataset
-from PIL.Image import Image
-from tqdm.asyncio import tqdm
-from transformers import PreTrainedTokenizerBase
+from sample_requests import sample_hf_requests, sample_heka_requests, sample_random_requests
+from benchmark_argparser import get_serving_args_parser
+from result_saver import save_result
 
 try:
     from vllm.transformers_utils.tokenizer import get_tokenizer
 except ImportError:
     from backend_request_func import get_tokenizer
-
-try:
-    from vllm.utils import FlexibleArgumentParser
-except ImportError:
-    from argparse import ArgumentParser as FlexibleArgumentParser
-
 
 @dataclass
 class BenchmarkMetrics:
@@ -85,105 +79,6 @@ class BenchmarkMetrics:
     median_e2el_ms: float
     std_e2el_ms: float
     percentiles_e2el_ms: List[Tuple[float, float]]
-
-
-def sample_hf_requests(
-    dataset_path: str,
-    dataset_subset: str,
-    dataset_split: str,
-    num_requests: int,
-    tokenizer: PreTrainedTokenizerBase,
-    revision: str = "main",
-    fixed_output_len: Optional[int] = None,
-) -> List[Tuple[str, str, int, Optional[Dict[str, Collection[str]]]]]:
-    dataset = load_dataset(
-        dataset_path, name=dataset_subset, split=dataset_split, revision=revision
-    )
-
-    print(dataset)
-    assert (
-        "conversations" in dataset.features
-    ), "HF Dataset must have 'conversations' column."
-    filtered_dataset = dataset.shuffle().filter(lambda x: len(x["conversations"]) >= 2)
-    sampled_requests: List[Tuple[str, int, int, Dict[str, Collection[str]]]] = []
-    for data in filtered_dataset:
-        if len(sampled_requests) == num_requests:
-            break
-
-        # Tokenize the prompts and completions.
-        prompt = data["conversations"][0]["value"]
-        prompt_token_ids = tokenizer(prompt).input_ids
-        completion = data["conversations"][1]["value"]
-        completion_token_ids = tokenizer(completion).input_ids
-        prompt_len = len(prompt_token_ids)
-        output_len = (
-            len(completion_token_ids) if fixed_output_len is None else fixed_output_len
-        )
-        if fixed_output_len is None and (prompt_len < 4 or output_len < 4):
-            # Prune too short sequences.
-            continue
-        if fixed_output_len is None and (
-            prompt_len > 1024 or prompt_len + output_len > 2048
-        ):
-            # Prune too long sequences.
-            continue
-
-        if "image" in data and isinstance(data["image"], Image):
-            image: Image = data["image"]
-            image = image.convert("RGB")
-            image_data = io.BytesIO()
-            image.save(image_data, format="JPEG")
-            image_base64 = base64.b64encode(image_data.getvalue()).decode("utf-8")
-            mm_content = {
-                "type": "image_url",
-                "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"},
-            }
-        else:
-            mm_content = None
-
-        sampled_requests.append((prompt, prompt_len, output_len, mm_content))
-
-    return sampled_requests
-
-
-def sample_random_requests(
-    prefix_len: int,
-    input_len: int,
-    output_len: int,
-    num_prompts: int,
-    range_ratio: float,
-    tokenizer: PreTrainedTokenizerBase,
-) -> List[Tuple[str, int, int]]:
-    prefix_token_ids = np.random.randint(
-        0, tokenizer.vocab_size, size=prefix_len
-    ).tolist()
-
-    input_lens = np.random.randint(
-        int(input_len * range_ratio),
-        input_len + 1,
-        size=num_prompts,
-    )
-    output_lens = np.random.randint(
-        int(output_len * range_ratio),
-        output_len + 1,
-        size=num_prompts,
-    )
-    offsets = np.random.randint(0, tokenizer.vocab_size, size=num_prompts)
-    input_requests = []
-    for i in range(num_prompts):
-        prompt = tokenizer.decode(
-            prefix_token_ids
-            + [
-                (offsets[i] + i + j) % tokenizer.vocab_size
-                for j in range(input_lens[i])
-            ]
-        )
-
-        input_requests.append(
-            (prompt, int(prefix_len + input_lens[i]), int(output_lens[i]), None)
-        )
-
-    return input_requests
 
 
 async def get_request(
@@ -229,7 +124,8 @@ def calculate_metrics(
                 tokenizer(outputs[i].generated_text, add_special_tokens=False).input_ids
             )
             actual_output_lens.append(output_len)
-            total_input += input_requests[i][1]
+            
+            total_input += input_requests[i][2]
             if output_len > 1:
                 tpots.append((outputs[i].latency - outputs[i].ttft) / (output_len - 1))
             itls += outputs[i].itl
@@ -302,9 +198,11 @@ async def benchmark(
         request_func = ASYNC_REQUEST_FUNCS[backend]
     else:
         raise ValueError(f"Unknown backend: {backend}")
-
     print("Starting initial single prompt test run...")
-    test_prompt, test_prompt_len, test_output_len, test_mm_content = input_requests[0]
+    try:
+        test_prompt, test_expected_output, test_prompt_len, test_output_len, test_mm_content = input_requests[0]
+    except ValueError:
+        test_prompt, test_prompt_len, test_output_len, test_mm_content = input_requests[0]
     if backend != "openai-chat" and test_mm_content is not None:
         # multi-modal benchmark is only available on OpenAI Chat backend.
         raise ValueError(
@@ -353,7 +251,10 @@ async def benchmark(
     benchmark_start_time = time.perf_counter()
     tasks: List[asyncio.Task] = []
     async for request in get_request(input_requests, request_rate):
-        prompt, prompt_len, output_len, mm_content = request
+        try:
+            prompt, expected_output, prompt_len, output_len, mm_content = request
+        except ValueError:
+            prompt, prompt_len, output_len, mm_content = request
         request_func_input = RequestFuncInput(
             model=model_id,
             prompt=prompt,
@@ -487,11 +388,10 @@ async def benchmark(
 
 
 def main(args: argparse.Namespace):
-    print(args)
     random.seed(args.seed)
     np.random.seed(args.seed)
 
-    backend = args.backend
+    backend = args.backend or "openai"
     model_id = args.model
     tokenizer_id = args.tokenizer if args.tokenizer is not None else args.model
 
@@ -511,7 +411,6 @@ def main(args: argparse.Namespace):
             "'--dataset-path' in the future runs.",
             stacklevel=2,
         )
-
     elif args.dataset_name == "hf":
         input_requests = sample_hf_requests(
             dataset_path=args.dataset_path,
@@ -519,6 +418,18 @@ def main(args: argparse.Namespace):
             dataset_split=args.hf_split,
             num_requests=args.num_prompts,
             tokenizer=tokenizer,
+            revision=args.hf_revision,
+            fixed_output_len=args.hf_output_len,
+        )
+
+    elif args.dataset_name == "heka":
+        input_requests, list_prompt, list_expected_output = sample_heka_requests(
+            dataset_path=args.dataset_path,
+            dataset_subset=args.hf_subset,
+            dataset_split=args.hf_split,
+            num_requests=args.num_prompts,
+            tokenizer=tokenizer,
+            task=args.task_name,
             revision=args.hf_revision,
             fixed_output_len=args.hf_output_len,
         )
@@ -554,263 +465,41 @@ def main(args: argparse.Namespace):
             ignore_eos=args.ignore_eos,
         )
     )
-
+    
     # Save config and results to json
-    if args.save_result:
-        result_json: Dict[str, Any] = {}
-
-        # Setup
-        current_dt = datetime.now().strftime("%Y%m%d-%H%M%S")
-        result_json["date"] = current_dt
-        result_json["backend"] = backend
-        result_json["model_id"] = model_id
-        result_json["tokenizer_id"] = tokenizer_id
-        result_json["best_of"] = args.best_of
-        result_json["num_prompts"] = args.num_prompts
-
-        # Metadata
-        if args.metadata:
-            for item in args.metadata:
-                if "=" in item:
-                    kvstring = item.split("=")
-                    result_json[kvstring[0].strip()] = kvstring[1].strip()
-                else:
-                    raise ValueError(
-                        "Invalid metadata format. Please use KEY=VALUE format."
-                    )
-
-        # Traffic
-        result_json["request_rate"] = (
-            args.request_rate if args.request_rate < float("inf") else "inf"
+    if args.dataset_name == "heka":
+        # list_prompt and list_expected_output are already defined from sample_heka_requests
+        save_result(
+            deployment_config,
+            args,
+            benchmark_result,
+            list_prompt,
+            list_expected_output,
         )
-
-        # Merge with benchmark result
-        result_json = {**result_json, **benchmark_result}
-
-        # Save to file
-        base_model_id = model_id.split("/")[-1]
-        file_name = (
-            f"{backend}-{args.request_rate}qps-{base_model_id}-{current_dt}.json"  # noqa
+    else:
+        list_prompt = [request[0] for request in input_requests]
+        list_expected_output = [request[1] for request in input_requests]
+        save_result(
+            deployment_config,
+            args,
+            benchmark_result,
+            list_prompt,
+            list_expected_output,
         )
-        if args.result_filename:
-            file_name = args.result_filename
-        if args.result_dir:
-            file_name = os.path.join(args.result_dir, file_name)
-        with open(file_name, "w", encoding="utf-8") as outfile:
-            json.dump(result_json, outfile)
 
 
 if __name__ == "__main__":
-    parser = FlexibleArgumentParser(
-        description="Benchmark the online serving throughput."
-    )
-    parser.add_argument(
-        "--backend",
-        type=str,
-        default="vllm",
-        choices=list(ASYNC_REQUEST_FUNCS.keys()),
-    )
-    parser.add_argument(
-        "--base-url",
-        type=str,
-        default=None,
-        help="Server or API base url if not using http host and port.",
-    )
-    parser.add_argument("--host", type=str, default="localhost")
-    parser.add_argument("--port", type=int, default=8000)
-    parser.add_argument(
-        "--endpoint",
-        type=str,
-        default="/v1/completions",
-        help="API endpoint.",
-    )
-    parser.add_argument(
-        "--dataset",
-        type=str,
-        default=None,
-        help="Path to the ShareGPT dataset, will be deprecated in the next release.",
-    )
-    parser.add_argument(
-        "--dataset-name",
-        type=str,
-        default="sharegpt",
-        choices=["sharegpt", "sonnet", "random", "hf"],
-        help="Name of the dataset to benchmark on.",
-    )
-    parser.add_argument(
-        "--dataset-path",
-        type=str,
-        default=None,
-        help="Path to the sharegpt/sonnet dataset. "
-        "Or the huggingface dataset ID if using HF dataset.",
-    )
-    parser.add_argument(
-        "--hf-revision",
-        type=str,
-        default="main",
-        help="Revision of the huggingface dataset to use.",
-    )
 
-    parser.add_argument(
-        "--model",
-        type=str,
-        required=True,
-        help="Name of the model.",
-    )
-    parser.add_argument(
-        "--tokenizer",
-        type=str,
-        help="Name or path of the tokenizer, if not using the default tokenizer.",  # noqa: E501
-    )
-    parser.add_argument(
-        "--best-of",
-        type=int,
-        default=1,
-        help="Generates `best_of` sequences per prompt and returns the best one.",
-    )
-    parser.add_argument("--use-beam-search", action="store_true")
-    parser.add_argument(
-        "--num-prompts",
-        type=int,
-        default=1000,
-        help="Number of prompts to process.",
-    )
-    parser.add_argument(
-        "--logprobs",
-        type=int,
-        default=None,
-        help=(
-            "Number of logprobs-per-token to compute & return as part of "
-            "the request. If unspecified, then either (1) if beam search "
-            "is disabled, no logprobs are computed & a single dummy "
-            "logprob is returned for each token; or (2) if beam search "
-            "is enabled 1 logprob per token is computed"
-        ),
-    )
-    parser.add_argument(
-        "--request-rate",
-        type=float,
-        default=float("inf"),
-        help="Number of requests per second. If this is inf, "
-        "then all the requests are sent at time 0. "
-        "Otherwise, we use Poisson process to synthesize "
-        "the request arrival times.",
-    )
-    parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument(
-        "--trust-remote-code",
-        action="store_true",
-        help="Trust remote code from huggingface",
-    )
-    parser.add_argument(
-        "--disable-tqdm",
-        action="store_true",
-        help="Specify to disable tqdm progress bar.",
-    )
-    parser.add_argument(
-        "--profile",
-        action="store_true",
-        help="Use Torch Profiler. The endpoint must be launched with "
-        "VLLM_TORCH_PROFILER_DIR to enable profiler.",
-    )
-    parser.add_argument(
-        "--save-result",
-        action="store_true",
-        help="Specify to save benchmark results to a json file",
-    )
-    parser.add_argument(
-        "--metadata",
-        metavar="KEY=VALUE",
-        nargs="*",
-        help="Key-value pairs (e.g, --metadata version=0.3.3 tp=1) "
-        "for metadata of this run to be saved in the result JSON file "
-        "for record keeping purposes.",
-    )
-    parser.add_argument(
-        "--result-dir",
-        type=str,
-        default=None,
-        help="Specify directory to save benchmark json results."
-        "If not specified, results are saved in the current directory.",
-    )
-    parser.add_argument(
-        "--result-filename",
-        type=str,
-        default=None,
-        help="Specify the filename to save benchmark json results."
-        "If not specified, results will be saved in "
-        "{backend}-{args.request_rate}qps-{base_model_id}-{current_dt}.json"
-        " format.",
-    )
-    parser.add_argument(
-        "--ignore-eos",
-        action="store_true",
-        help="Set ignore_eos flag when sending the benchmark request."
-        "Warning: ignore_eos is not supported in deepspeed_mii and tgi.",
-    )
-    parser.add_argument(
-        "--percentile-metrics",
-        type=str,
-        default="ttft,tpot,itl",
-        help="Comma-seperated list of selected metrics to report percentils. "
-        "This argument specifies the metrics to report percentiles. "
-        'Allowed metric names are "ttft", "tpot", "itl", "e2el". '
-        'Default value is "ttft,tpot,itl".',
-    )
-    parser.add_argument(
-        "--metric-percentiles",
-        type=str,
-        default="99",
-        help="Comma-seperated list of percentiles for selected metrics. "
-        'To report 25-th, 50-th, and 75-th percentiles, use "25,50,75". '
-        'Default value is "99". '
-        'Use "--percentile-metrics" to select metrics.',
-    )
-
-    random_group = parser.add_argument_group("random dataset options")
-    random_group.add_argument(
-        "--random-input-len",
-        type=int,
-        default=1024,
-        help="Number of input tokens per request, used only for random sampling.",
-    )
-    random_group.add_argument(
-        "--random-output-len",
-        type=int,
-        default=128,
-        help="Number of output tokens per request, used only for random sampling.",
-    )
-    random_group.add_argument(
-        "--random-range-ratio",
-        type=float,
-        default=1.0,
-        help="Range of sampled ratio of input/output length, "
-        "used only for random sampling.",
-    )
-    random_group.add_argument(
-        "--random-prefix-len",
-        type=int,
-        default=0,
-        help="Number of fixed prefix tokens before random "
-        " context. The length range of context in a random "
-        " request is [random-prefix-len, "
-        " random-prefix-len + random-prefix-len * random-range-ratio).",
-    )
-
-    hf_group = parser.add_argument_group("hf dataset options")
-    hf_group.add_argument(
-        "--hf-subset", type=str, default=None, help="Subset of the HF dataset."
-    )
-    hf_group.add_argument(
-        "--hf-split", type=str, default=None, help="Split of the HF dataset."
-    )
-    hf_group.add_argument(
-        "--hf-output-len",
-        type=int,
-        default=None,
-        help="Output length for each request. Overrides the output lengths "
-        "from the sampled HF dataset.",
-    )
-
+    parser = get_serving_args_parser()
     args = parser.parse_args()
+
+    deployment_config_file = args.deployment_config_file
+    if deployment_config_file is None:
+        raise ValueError("Deployment config file is required to populate some fields in the results json file.") 
+    
+    if not deployment_config_file.endswith(".toml"):
+        raise ValueError("Deployment config file must have .toml extension.")
+    with open(deployment_config_file, "rb") as f:
+        deployment_config = tomli.load(f)
+
     main(args)

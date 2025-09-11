@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/spf13/viper"
 )
 
 type Config struct {
@@ -268,6 +270,11 @@ func GenerateBenchmarkCommand(conf *Config, ip string, port int) ([]string, erro
 	}
 
 	localArgs = append(localArgs, "--model", conf.VLLMConfig.Model)
+
+	// Forward the CLI --config path as the deployment config file
+	if cfgPath := strings.TrimSpace(viper.GetString("config")); cfgPath != "" {
+		localArgs = append(localArgs, "--deployment-config-file", cfgPath)
+	}
 
 	return localArgs, nil
 }
