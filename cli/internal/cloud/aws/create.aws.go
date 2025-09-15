@@ -9,8 +9,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
-	"github.com/heka-ai/benchmark-cli/internal/constants"
 	"github.com/spf13/viper"
+
+	"github.com/heka-ai/benchmark-cli/internal/constants"
 )
 
 func (c *AWSClient) Create() error {
@@ -29,11 +30,9 @@ func (c *AWSClient) Create() error {
 	userData := fmt.Sprintf(`#!/bin/bash
 echo "API_KEY=%s" > /home/ubuntu/.bashrc
 echo "HF_TOKEN=%s" >> /home/ubuntu/.bashrc
-TOML_FILE='
+cat > /home/ubuntu/config.toml << 'BENCH_EOF'
 %s
-'
-touch /home/ubuntu/config.toml
-echo "$TOML_FILE" > /home/ubuntu/config.toml
+BENCH_EOF
 # Also export HF_TOKEN for the api.service (EnvironmentFile)
 printf 'HF_TOKEN=%s\n' | sudo tee /etc/default/benchmark-api >/dev/null
 sudo systemctl daemon-reload
