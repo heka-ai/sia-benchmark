@@ -97,7 +97,7 @@ func logs(isLLM, isBenchmark, follow bool, interval time.Duration) {
 
 	if follow {
 		logger.Info().Str("type", instanceType).Msg("Following logs in real-time")
-		err = client.FollowBenchLogsWithTimeout(instanceIP, instanceType, interval, 60*time.Second, true)
+		err = client.FollowBenchLogsWithTimeout(instanceIP, instanceType, interval, 5*time.Minute, true)
 		if err != nil {
 			logger.Fatal().Err(err).Msg("Failed to follow logs")
 		}

@@ -70,6 +70,6 @@ func RunExec() {
 
 	logger.Info().Msg("Benchmark started on the bench instance")
 	if wait {
-		_ = client.FollowBenchLogsWithTimeout(benchInstanceIP, "bench", 1*time.Second, 60*time.Second, true)
+		_ = client.FollowBenchLogsWithTimeout(benchInstanceIP, "bench", 1*time.Second, 5*time.Minute, true)
 	}
 }
