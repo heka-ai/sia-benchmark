@@ -27,7 +27,9 @@ func validate() {
 	c := config.GetConfig()
 
 	cloud := cloud_generator.NewCloud(&c)
-	cloud.ValidateCredentials()
+	if err := cloud.ValidateCredentials(); err != nil {
+		logger.Fatal().Err(err).Msg("Cannot perform EC2 RunInstances dry-run")
+	}
 
 	if err := huggingface.ValidateHFCredentials(&c); err != nil {
 		logger.Fatal().Err(err).Msg("HuggingFace credentials validation failed")
