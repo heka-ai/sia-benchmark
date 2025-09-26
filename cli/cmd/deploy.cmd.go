@@ -22,23 +22,16 @@ func DeployCmd() *cobra.Command {
 				return
 			}
 
-			port, err := cmd.Flags().GetInt("vllm-port")
-			if err != nil {
-				logger.Error().Err(err).Msg("Failed to get vllm-port flag")
-				return
-			}
-
-			deploy(wait, port)
+			deploy(wait)
 		},
 	}
 
 	command.Flags().BoolP("wait", "w", false, "Wait for the LLM to be ready")
-	command.Flags().Int("vllm-port", 8000, "Port where vLLM will listen (default 8000)")
 
 	return command
 }
 
-func deploy(wait bool, port int) {
+func deploy(wait bool) {
 	logger.Info().Msg("Deploying and starting the LLM on the GPU instance")
 
 	config.Init()
@@ -49,6 +42,9 @@ func deploy(wait bool, port int) {
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Cannot get the LLM instance IP")
 	}
+
+	// Use port from config instead of flag
+	port := c.BenchmarkConfig.EnginePort
 
 	llmClient := bench.NewClient(c.APIKey)
 	err = llmClient.Deploy(llmInstanceIP, c.InferenceEngine, port)

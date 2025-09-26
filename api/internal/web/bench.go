@@ -26,14 +26,17 @@ func (s *HttpServer) generateBenchRouter(router *gin.Engine) {
 
 		logger.Info().Str("ip", req.IP).Msg("Starting benchmark")
 
-		// Defaults
+		// Use config values as defaults, with request parameter override
 		port := req.Port
 		if port <= 0 {
-			port = 8000
+			port = s.config.GetConfig().BenchmarkConfig.EnginePort
 		}
 		result := req.ResultFilename
 		if strings.TrimSpace(result) == "" {
-			result = "/home/ubuntu/metrics.json"
+			result = s.config.GetConfig().BenchmarkConfig.ResultFilename
+			if strings.TrimSpace(result) == "" {
+				result = "/home/ubuntu/metrics.json"
+			}
 		}
 
 		err := s.benchmark.Start(req.IP, port, result)

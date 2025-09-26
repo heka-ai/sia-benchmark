@@ -2,7 +2,6 @@ package config
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/exec"
 	"reflect"
@@ -76,7 +75,7 @@ func InitConfig() {
 			if err.Field() == "Token" && err.Tag() == "required" {
 				logger.Error().Msg("benchmark.token is required. Set it in [benchmark] token = \"...\" or export one of: HF_TOKEN, HUGGINGFACEHUB_API_TOKEN, HF_API_TOKEN")
 			}
-			fmt.Println(err)
+			logger.Error().Err(err).Msg("validation error")
 		}
 		os.Exit(1)
 	}

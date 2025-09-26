@@ -8,7 +8,6 @@ Restart=always
 RestartSec=5
 User=ubuntu
 Group=ubuntu
-EnvironmentFile=-/etc/default/benchmark-api
 Environment=PATH=/opt/pytorch/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 [Install]

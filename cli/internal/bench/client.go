@@ -277,7 +277,7 @@ func (c *Client) FollowBenchLogs(ip string, engineType string, interval time.Dur
 		}
 		if print {
 			if logs != last {
-				fmt.Print(logs)
+				logger.Info().Msg(logs)
 				last = logs
 			}
 		}
@@ -298,7 +298,7 @@ func (c *Client) FollowBenchLogsWithTimeout(ip string, engineType string, interv
 		// Check if we received new logs
 		if logs != last {
 			if print {
-				fmt.Print(logs)
+				logger.Info().Msg(logs)
 			}
 			last = logs
 			lastActivity = time.Now() // Reset the timeout when we get new logs
@@ -307,7 +307,7 @@ func (c *Client) FollowBenchLogsWithTimeout(ip string, engineType string, interv
 		// Check if we've been idle for too long
 		if time.Since(lastActivity) > timeout {
 			if print {
-				fmt.Printf("\n[Timeout] No new logs received for %v, stopping...\n", timeout)
+				logger.Warn().Dur("timeout", timeout).Msg("No new logs received for the configured timeout; stopping")
 			}
 			return nil
 		}

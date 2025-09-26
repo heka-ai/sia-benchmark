@@ -33,6 +33,7 @@ type BenchmarkConfig struct {
 	Backend        string `mapstructure:"backend" json:"backend" validate:"omitempty,oneof=openai" default:"openai"`
 	SaveResult     bool   `mapstructure:"save_result" json:"save-result" validate:"omitempty" default:"true"`
 	ResultFilename string `mapstructure:"result_filename" json:"result-filename" validate:"omitempty" default:"metrics.json"`
+	EnginePort     int    `mapstructure:"engine_port" json:"engine-port" validate:"omitempty" default:"8000"`
 	ScriptPath     string `mapstructure:"script_path" json:"script-path" validate:"omitempty"`
 }
 
@@ -217,6 +218,13 @@ func GenerateVLLMCommand(vllmConfig *VLLMConfig) ([]string, error) {
 		}
 
 		logger.Warn().Str("key", k).Interface("value", v).Msg("Unknown type")
+	}
+
+	// Append engine port from benchmark config so vLLM serves on the configured port
+	// Assumptions per project rules: BenchmarkConfig is non-nil, EnginePort > 0 when set
+	enginePort := GetConfig().BenchmarkConfig.EnginePort
+	if enginePort > 0 {
+		localArgs = append(localArgs, "--port", strconv.Itoa(enginePort))
 	}
 
 	return localArgs, nil

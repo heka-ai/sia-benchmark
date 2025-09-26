@@ -22,16 +22,12 @@ func BenchCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Int("vllm-port", 8000, "Port where vLLM listens (default 8000)")
-	cmd.Flags().String("result-filename", "./metrics.json", "Where to write benchmark results")
 	cmd.Flags().Bool("wait", true, "Stream benchmark logs until completion")
 
-	// Bind flags to Viper keys for global access
-	_ = viper.BindPFlag("vllm_port", cmd.Flags().Lookup("vllm-port"))
-	_ = viper.BindPFlag("result_filename", cmd.Flags().Lookup("result-filename"))
+	// Bind wait flag to Viper for global access
 	_ = viper.BindPFlag("wait", cmd.Flags().Lookup("wait"))
 
-	// Ensure env like VLLM_PORT works (optional)
+	// Ensure env like WAIT works (optional)
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.AutomaticEnv()
 
@@ -55,9 +51,9 @@ func RunExec() {
 		logger.Fatal().Err(err).Msg("Cannot get the LLM instance IP")
 	}
 
-	// Read values via Viper (flags/env/config precedence)
-	port := viper.GetInt("vllm_port")
-	result := viper.GetString("result_filename")
+	// Read values from config instead of flags/Viper
+	port := c.BenchmarkConfig.EnginePort
+	result := c.BenchmarkConfig.ResultFilename
 	if strings.TrimSpace(result) == "" {
 		result = "./metrics.json"
 	}

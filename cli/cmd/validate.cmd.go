@@ -68,7 +68,8 @@ func ValidateExec(vllmModel bool, benchmarkModel bool) {
 	if benchmarkModel {
 		cfg := config.GetConfig()
 
-		localArgs, err := config.GenerateBenchmarkCommand(&cfg, "127.0.0.1", 8000) // 8000 is uses as default just for the validation.
+		// Use EnginePort from config for validation output instead of a hardcoded default
+		localArgs, err := config.GenerateBenchmarkCommand(&cfg, "127.0.0.1", cfg.BenchmarkConfig.EnginePort)
 		if err != nil {
 			logger.Error().Err(err).Msg("Error generating the benchmark command")
 			return

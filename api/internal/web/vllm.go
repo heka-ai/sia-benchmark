@@ -13,8 +13,8 @@ func (s *HttpServer) generateVLLMRouter(router *gin.Engine) {
 	vllmRouter := router.Group("/vllm")
 
 	vllmRouter.GET("/start", func(c *gin.Context) {
-		// Optional port query parameter to configure vLLM serving port (default 8000)
-		port := 8000
+		// Use port from config, with optional query parameter override
+		port := s.config.GetConfig().BenchmarkConfig.EnginePort
 		if p := c.Query("port"); p != "" {
 			if v, err := strconv.Atoi(p); err == nil && v > 0 && v < 65536 {
 				port = v

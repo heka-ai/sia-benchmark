@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -106,6 +105,6 @@ func logs(isLLM, isBenchmark, follow bool, interval time.Duration) {
 		if err != nil {
 			logger.Fatal().Err(err).Msg("Cannot get the logs")
 		}
-		fmt.Println(logs)
+		logger.Info().Msg(logs)
 	}
 }

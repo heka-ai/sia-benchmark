@@ -56,7 +56,7 @@ func (v *VLLM) GetLogsArchive() []string {
 }
 
 func (v *VLLM) Start(ctx context.Context) error {
-	return v.StartWithPort(ctx, 8000)
+	return v.StartWithPort(ctx, v.config.GetConfig().BenchmarkConfig.EnginePort)
 }
 
 // StartWithPort launches vLLM specifying the serving port. It appends
