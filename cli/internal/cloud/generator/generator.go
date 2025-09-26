@@ -5,7 +5,6 @@ import (
 
 	"github.com/heka-ai/benchmark-cli/internal/cloud"
 	"github.com/heka-ai/benchmark-cli/internal/cloud/aws"
-	"github.com/heka-ai/benchmark-cli/internal/cloud/huggingface"
 	"github.com/heka-ai/benchmark-cli/internal/cloud/local"
 	log "github.com/heka-ai/benchmark-cli/internal/logs"
 	"github.com/heka-ai/benchmark-cli/pkg/config"
@@ -29,7 +28,4 @@ func NewCloud(config *config.Config) cloud.Cloud {
 	return nil
 }
 
-func NewHFClient(config *config.Config) cloud.Cloud {
-	hfClient := huggingface.NewClient(config)
-	return hfClient.Init()
-}
+// HuggingFace validation is now a simple function; no client factory needed here.

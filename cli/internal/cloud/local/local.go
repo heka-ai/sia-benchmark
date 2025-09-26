@@ -50,34 +50,39 @@ func (c *LocalClient) ValidateCredentials() error {
 		return errors.New("client not initialized")
 	}
 
-	// Try nvidia-smi first
-	nameMem, nvidiaErr := queryNvidiaSMI()
-	if nvidiaErr == nil && len(nameMem) > 0 {
-		for i, nm := range nameMem {
-			logger.Info().Int("index", i).Str("name", nm.name).Str("memory", nm.memory).Msg("Detected NVIDIA GPU via nvidia-smi")
+	// Decide probing strategy based on accelerator type
+	accel := "nvidia"
+	if c.config != nil && c.config.LocalConfig != nil && strings.TrimSpace(c.config.LocalConfig.AcceleratorType) != "" {
+		accel = strings.ToLower(strings.TrimSpace(c.config.LocalConfig.AcceleratorType))
+	}
+
+	switch accel {
+	case "jetson":
+		nameMem, tegraErr := queryTegrastats()
+		if tegraErr == nil && len(nameMem) > 0 {
+			for i, nm := range nameMem {
+				logger.Info().Int("index", i).Str("name", nm.name).Str("memory", nm.memory).Msg("Detected NVIDIA JETSON GPU via tegrastats")
+			}
+			return nil
 		}
-		return nil
-	}
-
-	// Fallback to tegrastats (Jetson)
-	nameMem, tegraErr := queryTegrastats()
-	if tegraErr == nil && len(nameMem) > 0 {
-		for i, nm := range nameMem {
-			logger.Info().Int("index", i).Str("name", nm.name).Str("memory", nm.memory).Msg("Detected NVIDIA GPU via tegrastats")
+		if tegraErr != nil {
+			logger.Error().Err(tegraErr).Msg("tegrastats failed or is unavailable")
 		}
-		return nil
-	}
+		return errors.New("gpu detection failed: tegrastats failed or returned no GPU")
 
-	// Log detailed errors
-	if nvidiaErr != nil {
-		logger.Error().Err(nvidiaErr).Msg("nvidia-smi failed or is unavailable")
+	default: // nvidia discrete GPU
+		nameMem, nvidiaErr := queryNvidiaSMI()
+		if nvidiaErr == nil && len(nameMem) > 0 {
+			for i, nm := range nameMem {
+				logger.Info().Int("index", i).Str("name", nm.name).Str("memory", nm.memory).Msg("Detected NVIDIA GPU via nvidia-smi")
+			}
+			return nil
+		}
+		if nvidiaErr != nil {
+			logger.Error().Err(nvidiaErr).Msg("nvidia-smi failed or is unavailable")
+		}
+		return errors.New("gpu detection failed: nvidia-smi failed or returned no GPU")
 	}
-	if tegraErr != nil {
-		logger.Error().Err(tegraErr).Msg("tegrastats failed or is unavailable")
-	}
-
-	logger.Error().Msg("Neither nvidia-smi nor tegrastats worked. GPU detection failed.")
-	return errors.New("gpu detection failed: neither nvidia-smi nor tegrastats worked")
 }
 
 type gpuInfo struct {

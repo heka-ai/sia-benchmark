@@ -129,7 +129,7 @@ func (v *VLLM) Stop(ctx context.Context) error {
 
 	// If Start was never called or the process was not created, there is nothing to stop.
 	if v == nil || v.cmd == nil || v.cmd.Process == nil {
-		logger.Info().Msg("VLLM process not started; nothing to stop")
+		logger.Error().Msg("VLLM process not started; nothing to stop")
 		return nil
 	}
 

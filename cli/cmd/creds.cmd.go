@@ -1,9 +1,11 @@
 package main
 
 import (
-	cloud_generator "github.com/heka-ai/benchmark-cli/internal/cloud/generator"
-	"github.com/heka-ai/benchmark-cli/pkg/config"
 	"github.com/spf13/cobra"
+
+	cloud_generator "github.com/heka-ai/benchmark-cli/internal/cloud/generator"
+	huggingface "github.com/heka-ai/benchmark-cli/internal/huggingface"
+	"github.com/heka-ai/benchmark-cli/pkg/config"
 )
 
 // validate the cloud credentials, make sure the credentials are correct
@@ -27,8 +29,9 @@ func validate() {
 	cloud := cloud_generator.NewCloud(&c)
 	cloud.ValidateCredentials()
 
-	hf := cloud_generator.NewHFClient(&c)
-	hf.ValidateCredentials()
+	if err := huggingface.ValidateHFCredentials(&c); err != nil {
+		logger.Fatal().Err(err).Msg("HuggingFace credentials validation failed")
+	}
 
 	logger.Info().Msg("Credentials validated")
 }

@@ -9,12 +9,12 @@ import (
 	"slices"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/smithy-go"
-
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/aws/smithy-go"
+
 	"github.com/heka-ai/benchmark-cli/internal/bench"
 	"github.com/heka-ai/benchmark-cli/internal/cloud"
 	"github.com/heka-ai/benchmark-cli/internal/constants"
@@ -141,7 +141,7 @@ func (c *AWSClient) createInstance(instanceType string, dryRun bool, ami string,
 	allTags := slices.Concat(tags, defaultTags)
 	base64UserData := base64.StdEncoding.EncodeToString([]byte(userData))
 
-	logger.Debug().Str("instance-type", instanceType).Str("ami", ami).Interface("tags", allTags).Msg("Creating the instance (dry-run)")
+	// logger.Debug().Str("instance-type", instanceType).Str("ami", ami).Interface("tags", allTags).Msg("Creating the instance (dry-run)")
 
 	_, err := c.svc.RunInstances(context.TODO(), &ec2.RunInstancesInput{
 		InstanceType: types.InstanceType(instanceType),

@@ -16,6 +16,7 @@ type Config struct {
 	Provider        string           `mapstructure:"provider" validate:"required,oneof=aws gcp scaleway local"`
 	InferenceEngine string           `mapstructure:"inference_engine" validate:"required,oneof=vllm"`
 	AWSConfig       *AWSConfig       `mapstructure:"aws" validate:"required_if=Provider aws"`
+	LocalConfig     *LocalConfig     `mapstructure:"local" validate:"required_if=Provider local"`
 	VLLMConfig      *VLLMConfig      `mapstructure:"vllm" validate:"required_if=InferenceEngine vllm"`
 	InstanceConfig  *InstanceConfig  `mapstructure:"instance"`
 	BenchmarkConfig *BenchmarkConfig `mapstructure:"benchmark" validate:"required"`
@@ -168,6 +169,11 @@ type ScalewayConfig struct {
 
 	ScalewayAccessKey string `mapstructure:"access_key" validate:"required"`
 	ScalewaySecretKey string `mapstructure:"secret_key" validate:"required"`
+}
+
+type LocalConfig struct {
+	AcceleratorType string `mapstructure:"accelerator_type" validate:"required,oneof=jetson nvidia"`
+	GPUInstanceType string `mapstructure:"gpu_instance_type" validate:"required"`
 }
 
 type InstanceConfig struct {

@@ -161,7 +161,7 @@ func validateResourcesAllocation(cfg *Config) {
 		logger.Info().
 			Str("provider", cfg.Provider).
 			Str("engine", cfg.InferenceEngine).
-			Msg("Skipping GPU memory validation: not vLLM")
+			Msg("Skipping GPU resources allocation check: not vLLM")
 		return
 	}
 
