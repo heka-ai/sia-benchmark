@@ -259,7 +259,8 @@ func GenerateBenchmarkCommand(conf *Config, ip string, port int) ([]string, erro
 			continue
 		}
 
-		if k == "token" || k == "backend" || k == "script_path" {
+		// Exclude fields not meant to be passed to benchmark.py directly
+		if k == "token" || k == "backend" || k == "script_path" || k == "engine-port" {
 			continue
 		}
 
