@@ -76,16 +76,18 @@ func (b *Benchmark) Start(ip string, port int, resultFilename string) error {
 	b.resultPath = resultFilename
 	localArgs = append(localArgs, "--save-result", "--result-filename", resultFilename)
 
-	// Resolve python binary strictly via PATH (like `which python3`)
-	p, err := exec.LookPath("python3")
+	// Resolve uv binary via PATH (now includes /home/ubuntu/.local/bin)
+	p, err := exec.LookPath("uv")
 	if err != nil {
-		return fmt.Errorf("python3 not found in PATH: please install python3 or adjust PATH")
+		return fmt.Errorf("uv not found in PATH: please install uv or adjust PATH")
 	}
 
-	logger.Info().Str("command", p+" "+strings.Join(localArgs, " ")).Msg("Starting benchmark")
+	// Prepend "run python3" to the arguments
+	uvArgs := append([]string{"run", "python3"}, localArgs...)
 
-	b.cmd = exec.CommandContext(context.Background(), p, localArgs...)
-	b.cmd.Env = append(os.Environ(), "HF_TOKEN="+b.config.GetConfig().BenchmarkConfig.Token)
+	logger.Info().Str("command", p+" "+strings.Join(uvArgs, " ")).Msg("Starting benchmark")
+
+	b.cmd = exec.CommandContext(context.Background(), p, uvArgs...)
 
 	stdout, err := b.cmd.StdoutPipe()
 	if err != nil {

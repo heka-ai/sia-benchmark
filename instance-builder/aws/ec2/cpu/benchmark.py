@@ -37,6 +37,7 @@ from typing import AsyncGenerator, List, Optional, Tuple
 import numpy as np
 from tqdm.asyncio import tqdm
 from transformers import PreTrainedTokenizerBase
+from huggingface_hub import login
 
 from backend_request_func import (
     ASYNC_REQUEST_FUNCS,
@@ -390,10 +391,15 @@ async def benchmark(
 def main(args: argparse.Namespace):
     random.seed(args.seed)
     np.random.seed(args.seed)
+    try:
+        login(deployment_config["benchmark"]["token"])
+        print("(RE) Logged in to Hugging Face")
+    except Exception as e:
+        print(f"Error logging in to Hugging Face: {e}")
 
     backend = args.backend or "openai"
     model_id = args.model
-    tokenizer_id = args.tokenizer if args.tokenizer is not None else args.model
+    tokenizer_id = args.tokenizer if args.tokenizer is not None else model_id
 
     if args.base_url is not None:
         api_url = f"{args.base_url}{args.endpoint}"

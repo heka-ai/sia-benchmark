@@ -3,12 +3,13 @@ Description=VLLM Server
 After=network.target
 
 [Service]
+WorkingDirectory=/home/ubuntu
 ExecStart=/home/ubuntu/api --config /home/ubuntu/config.toml
 Restart=always
 RestartSec=5
 User=ubuntu
 Group=ubuntu
-Environment=PATH=/opt/pytorch/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=PATH=/home/ubuntu/.local/bin:/opt/pytorch/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 [Install]
 WantedBy=multi-user.target

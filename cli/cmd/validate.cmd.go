@@ -74,6 +74,6 @@ func ValidateExec(vllmModel bool, benchmarkModel bool) {
 			logger.Error().Err(err).Msg("Error generating the benchmark command")
 			return
 		}
-		logger.Info().Msg("Benchmark command generated for your config:\n" + formatCmd("/opt/pytorch/bin/python3", localArgs))
+		logger.Info().Msg("Benchmark command generated for your config:\n" + formatCmd("uv run python", localArgs))
 	}
 }
