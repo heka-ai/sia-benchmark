@@ -19,3 +19,4 @@ fastapi
 uvicorn
 pydantic
 datasets
+hf-transfer

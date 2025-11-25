@@ -5,3 +5,5 @@ results.json
 .idea/
 .vscode/
 .env
+__pycache__
+metrics.json

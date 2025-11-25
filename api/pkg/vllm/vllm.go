@@ -77,7 +77,10 @@ func (v *VLLM) Start(ctx context.Context) error {
 	}
 
 	v.cmd = exec.CommandContext(ctx, bin, localArgs...)
-	v.cmd.Env = append(os.Environ(), "HF_TOKEN="+v.config.GetConfig().BenchmarkConfig.Token)
+	v.cmd.Env = append(os.Environ(),
+		"HF_TOKEN="+v.config.GetConfig().BenchmarkConfig.Token,
+		"HF_HUB_ENABLE_HF_TRANSFER=1",
+	)
 
 	stdout, err := v.cmd.StdoutPipe()
 	if err != nil {

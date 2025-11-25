@@ -92,6 +92,10 @@ func (b *Benchmark) Start(ip string) error {
 	logger.Info().Str("command", p+" "+strings.Join(uvArgs, " ")).Msg("Starting benchmark")
 
 	b.cmd = exec.CommandContext(context.Background(), p, uvArgs...)
+	b.cmd.Env = append(os.Environ(),
+		"HF_TOKEN="+cfg.BenchmarkConfig.Token,
+		"HF_HUB_ENABLE_HF_TRANSFER=1",
+	)
 
 	stdout, err := b.cmd.StdoutPipe()
 	if err != nil {

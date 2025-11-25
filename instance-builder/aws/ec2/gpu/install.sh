@@ -28,6 +28,7 @@ echo "Installing setuptools and chz as they are required for gptoss"
 python3.12 -m pip install --upgrade pip
 python3.12 -m pip install setuptools==68.2.2
 python3.12 -m pip install chz
+python3.12 -m pip install hf-transfer
 
 echo "Installing vllm (GPT-OSS)"
 python3.12 -m pip install --pre "vllm==0.10.1+gptoss" \
