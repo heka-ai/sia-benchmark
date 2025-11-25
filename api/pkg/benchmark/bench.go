@@ -4,17 +4,20 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"strings"
 
 	"github.com/go-playground/validator/v10"
-	apiConfig "github.com/heka-ai/benchmark-api/internal/config"
-	"github.com/heka-ai/benchmark-api/internal/log"
+	"go.uber.org/fx"
+
 	cliConfig "github.com/heka-ai/benchmark-cli/pkg/config"
 	"github.com/heka-ai/benchmark-cli/pkg/results"
-	"go.uber.org/fx"
+
+	apiConfig "github.com/heka-ai/benchmark-api/internal/config"
+	"github.com/heka-ai/benchmark-api/internal/log"
 )
 
 var PATH_TO_PYTHON = "/opt/pytorch/bin/python3"
@@ -31,7 +34,8 @@ type Benchmark struct {
 
 	logsArchive []string
 
-	config *apiConfig.APIConfig
+	config     *apiConfig.APIConfig
+	resultPath string
 }
 
 var BenchmarkModule = fx.Module("benchmark",
@@ -61,17 +65,33 @@ func NewBenchmark(lc fx.Lifecycle, config *apiConfig.APIConfig) *Benchmark {
 }
 
 func (b *Benchmark) Start(ip string) error {
-	localArgs, err := cliConfig.GenerateBenchmarkCommand(b.config.GetConfig(), ip)
+	cfg := b.config.GetConfig()
+	port := cfg.BenchmarkConfig.EnginePort
+	resultFilename := strings.TrimSpace(cfg.BenchmarkConfig.ResultFilename)
+	if resultFilename == "" {
+		resultFilename = PATH_TO_RESULTS
+	}
+
+	localArgs, err := cliConfig.GenerateBenchmarkCommand(cfg, ip, port)
 	if err != nil {
 		return err
 	}
 
-	localArgs = append(localArgs, "--save-result", "--result-filename", PATH_TO_RESULTS)
+	b.resultPath = resultFilename
+	localArgs = append(localArgs, "--save-result", "--result-filename", resultFilename)
 
-	logger.Info().Str("command", PATH_TO_PYTHON+" "+strings.Join(localArgs, " ")).Msg("Starting benchmark")
+	// Resolve uv binary via PATH (now includes /home/ubuntu/.local/bin)
+	p, err := exec.LookPath("uv")
+	if err != nil {
+		return fmt.Errorf("uv not found in PATH: please install uv or adjust PATH")
+	}
 
-	b.cmd = exec.CommandContext(context.Background(), PATH_TO_PYTHON, localArgs...)
-	b.cmd.Env = append(os.Environ(), "HF_TOKEN="+b.config.GetConfig().BenchmarkConfig.Token)
+	// Prepend "run python3" to the arguments
+	uvArgs := append([]string{"run", "python3"}, localArgs...)
+
+	logger.Info().Str("command", p+" "+strings.Join(uvArgs, " ")).Msg("Starting benchmark")
+
+	b.cmd = exec.CommandContext(context.Background(), p, uvArgs...)
 
 	stdout, err := b.cmd.StdoutPipe()
 	if err != nil {
@@ -114,7 +134,11 @@ func (b *Benchmark) Start(ip string) error {
 }
 
 func (b *Benchmark) GetResult() (*results.Results, error) {
-	file, err := os.Open(PATH_TO_RESULTS)
+	path := b.resultPath
+	if strings.TrimSpace(path) == "" {
+		path = PATH_TO_RESULTS
+	}
+	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}

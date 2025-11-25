@@ -3,34 +3,44 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
+
+	"github.com/spf13/viper"
 )
 
 type Config struct {
-	BenchID         string           `mapstructure:"bench_id" validate:"required"`
-	Provider        string           `mapstructure:"provider" validate:"required,oneof=aws gcp scaleway"`
+	BenchmarkID     string           `mapstructure:"benchmark_id" validate:"required"`
+	Provider        string           `mapstructure:"provider" validate:"required,oneof=aws gcp scaleway local"`
 	InferenceEngine string           `mapstructure:"inference_engine" validate:"required,oneof=vllm"`
 	AWSConfig       *AWSConfig       `mapstructure:"aws" validate:"required_if=Provider aws"`
+	LocalConfig     *LocalConfig     `mapstructure:"local" validate:"required_if=Provider local"`
 	VLLMConfig      *VLLMConfig      `mapstructure:"vllm" validate:"required_if=InferenceEngine vllm"`
 	InstanceConfig  *InstanceConfig  `mapstructure:"instance"`
 	BenchmarkConfig *BenchmarkConfig `mapstructure:"benchmark" validate:"required"`
-	APIKey          string           `mapstructure:"api_key" validate:"required"`
+	APIKey          string           `mapstructure:"api_key" validate:"required_unless=Provider local"`
 }
 
 type BenchmarkConfig struct {
-	Token       string `mapstructure:"token" json:"token" validate:"required"`
-	DatasetName string `mapstructure:"dataset_name" json:"dataset-name" validate:"required"`
-	DatasetPath string `mapstructure:"dataset_path" json:"dataset-path" validate:"required"`
-	HFRevision  string `mapstructure:"hf_revision" json:"hf-revision" validate:"required"`
-	HFSplit     string `mapstructure:"hf_split" json:"hf-split" validate:"required"`
-	NumPrompts  int    `mapstructure:"num_prompts" json:"num-prompts" validate:"required"`
-	Seed        int    `mapstructure:"seed" json:"seed" validate:"required"`
-	Backend     string `mapstructure:"backend" json:"backend" validate:"required,oneof=openai"`
+	Token          string `mapstructure:"token" json:"token" validate:"required"`
+	DatasetName    string `mapstructure:"dataset_name" json:"dataset-name" validate:"required,oneof=random hf heka"`
+	DatasetPath    string `mapstructure:"dataset_path" json:"dataset-path" validate:"required"`
+	HFRevision     string `mapstructure:"hf_revision" json:"hf-revision" validate:"required_unless=DatasetName random" default:"main"`
+	HFSplit        string `mapstructure:"hf_split" json:"hf-split" validate:"required_unless=DatasetName random" default:"train"`
+	NumPrompts     int    `mapstructure:"num_prompts" json:"num-prompts" validate:"required" default:"500"`
+	Seed           int    `mapstructure:"seed" json:"seed" validate:"required" default:"42"`
+	Backend        string `mapstructure:"backend" json:"backend" validate:"omitempty,oneof=openai" default:"openai"`
+	SaveResult     bool   `mapstructure:"save_result" json:"save-result" validate:"omitempty" default:"true"`
+	ResultFilename string `mapstructure:"result_filename" json:"result-filename" validate:"omitempty" default:"metrics.json"`
+	EnginePort     int    `mapstructure:"engine_port" json:"engine-port" validate:"omitempty" default:"8000"`
+	ScriptPath     string `mapstructure:"script_path" json:"script-path" validate:"omitempty"`
 }
 
 type VLLMConfig struct {
 	Model                                      string   `mapstructure:"model"  validate:"required"`
-	Task                                       *string  `mapstructure:"task" json:"task" validate:"omitempty,oneof=auto generate embedding embed classify score reward"`
+	Task                                       *string  `mapstructure:"task" json:"task" validate:"omitempty,oneof=None auto generate embedding embed classify score reward"`
 	Tokenizer                                  *string  `mapstructure:"tokenizer" json:"tokenizer" validate:"omitempty"`
 	SkipTokenizerInit                          *bool    `mapstructure:"skip-tokenizer-init" json:"skip-tokenizer-init"`
 	Revision                                   *string  `mapstructure:"revision" json:"revision" validate:"omitempty"`
@@ -40,15 +50,15 @@ type VLLMConfig struct {
 	TrustRemoteCode                            *bool    `mapstructure:"trust-remote-code" json:"trust-remote-code"`
 	AllowedLocalMediaPath                      *string  `mapstructure:"allowed-local-media-path" json:"allowed-local-media-path" validate:"omitempty"`
 	DownloadDir                                *string  `mapstructure:"download-dir" json:"download-dir" validate:"omitempty"`
-	LoadFormat                                 *string  `mapstructure:"load-format" json:"load-format" validate:"omitempty,oneof=auto pt safetensors npcache dummy tensorizer sharded-state gguf bitsandbytes mistral runai-streamer"`
-	ConfigFormat                               *string  `mapstructure:"config-format" json:"config-format" validate:"omitempty,oneof=auto hf mistral"`
+	LoadFormat                                 *string  `mapstructure:"load-format" json:"load-format" validate:"omitempty,oneof=None auto pt safetensors npcache dummy tensorizer sharded-state gguf bitsandbytes mistral runai-streamer"`
+	ConfigFormat                               *string  `mapstructure:"config-format" json:"config-format" validate:"omitempty,oneof=None auto hf mistral"`
 	Dtype                                      *string  `mapstructure:"dtype" json:"dtype" validate:"omitempty,oneof=auto half float16 bfloat16 float float32"`
 	KVCacheDtype                               *string  `mapstructure:"kv-cache-dtype" json:"kv-cache-dtype" validate:"omitempty,oneof=auto fp8 fp8-e5m2 fp8-e4m3"`
 	MaxModelLen                                *int     `mapstructure:"max-model-len" json:"max-model-len" validate:"omitempty"`
-	GuidedDecodingBackend                      *string  `mapstructure:"guided-decoding-backend" json:"guided-decoding-backend" validate:"omitempty,oneof=outlines lm-format-enforcer xgrammar"`
+	GuidedDecodingBackend                      *string  `mapstructure:"guided-decoding-backend" json:"guided-decoding-backend" validate:"omitempty,oneof=None outlines lm-format-enforcer xgrammar"`
 	LogitsProcessorPattern                     *string  `mapstructure:"logits-processor-pattern" json:"logits-processor-pattern" validate:"omitempty"`
-	ModelImpl                                  *string  `mapstructure:"model-impl" json:"model-impl" validate:"omitempty,oneof=auto vllm transformers"`
-	DistributedExecutorBackend                 *string  `mapstructure:"distributed-executor-backend" json:"distributed-executor-backend" validate:"omitempty,oneof=ray mp uni external-launcher"`
+	ModelImpl                                  *string  `mapstructure:"model-impl" json:"model-impl" validate:"omitempty,oneof=None auto vllm transformers"`
+	DistributedExecutorBackend                 *string  `mapstructure:"distributed-executor-backend" json:"distributed-executor-backend" validate:"omitempty,oneof=None ray mp uni external-launcher"`
 	PipelineParallelSize                       *int     `mapstructure:"pipeline-parallel-size" json:"pipeline-parallel-size" validate:"omitempty"`
 	TensorParallelSize                         *int     `mapstructure:"tensor-parallel-size" json:"tensor-parallel-size" validate:"omitempty"`
 	MaxParallelLoadingWorkers                  *int     `mapstructure:"max-parallel-loading-workers" json:"max-parallel-loading-workers" validate:"omitempty"`
@@ -61,7 +71,7 @@ type VLLMConfig struct {
 	Seed                                       *int     `mapstructure:"seed" json:"seed" validate:"omitempty"`
 	SwapSpace                                  *int     `mapstructure:"swap-space" json:"swap-space" validate:"omitempty"`
 	CPUOffloadGB                               *int     `mapstructure:"cpu-offload-gb" json:"cpu-offload-gb" validate:"omitempty"`
-	GPUMemoryUtilization                       *int     `mapstructure:"gpu-memory-utilization" json:"gpu-memory-utilization" validate:"omitempty"`
+	GPUMemoryUtilization                       *float64 `mapstructure:"gpu-memory-utilization" json:"gpu-memory-utilization" validate:"omitempty"`
 	NumGPUBlocksOverride                       *int     `mapstructure:"num-gpu-blocks-override" json:"num-gpu-blocks-override" validate:"omitempty"`
 	MaxNumBatchedTokens                        *int     `mapstructure:"max-num-batched-tokens" json:"max-num-batched-tokens" validate:"omitempty"`
 	MaxNumSeqs                                 *int     `mapstructure:"max-num-seqs" json:"max-num-seqs" validate:"omitempty"`
@@ -85,14 +95,14 @@ type VLLMConfig struct {
 	MaxLoras                                   *int     `mapstructure:"max-loras" json:"max-loras" validate:"omitempty"`
 	MaxLoraRank                                *int     `mapstructure:"max-lora-rank" json:"max-lora-rank" validate:"omitempty"`
 	LoraExtraVocabSize                         *int     `mapstructure:"lora-extra-vocab-size" json:"lora-extra-vocab-size" validate:"omitempty"`
-	LoraDtype                                  *string  `mapstructure:"lora-dtype" json:"lora-dtype" validate:"omitempty,oneof=auto float16 bfloat16"`
+	LoraDtype                                  *string  `mapstructure:"lora-dtype" json:"lora-dtype" validate:"omitempty,oneof=None auto float16 bfloat16"`
 	LongLoraScalingFactors                     *string  `mapstructure:"long-lora-scaling-factors" json:"long-lora-scaling-factors" validate:"omitempty"`
 	MaxCPULoras                                *int     `mapstructure:"max-cpu-loras" json:"max-cpu-loras" validate:"omitempty"`
 	FullyShardedLoras                          *bool    `mapstructure:"fully-sharded-loras" json:"fully-sharded-loras"`
 	EnablePromptAdapter                        *bool    `mapstructure:"enable-prompt-adapter" json:"enable-prompt-adapter"`
 	MaxPromptAdapters                          *int     `mapstructure:"max-prompt-adapters" json:"max-prompt-adapters" validate:"omitempty"`
 	MaxPromptAdapterToken                      *int     `mapstructure:"max-prompt-adapter-token" json:"max-prompt-adapter-token" validate:"omitempty"`
-	Device                                     *string  `mapstructure:"device" json:"device" validate:"omitempty,oneof=auto cuda neuron cpu openvino tpu xpu hpu"`
+	Device                                     *string  `mapstructure:"device" json:"device" validate:"omitempty,oneof=None auto cuda neuron cpu openvino tpu xpu hpu"`
 	NumSchedulerSteps                          *int     `mapstructure:"num-scheduler-steps" json:"num-scheduler-steps" validate:"omitempty"`
 	MultiStepStreamOutputs                     *bool    `mapstructure:"multi-step-stream-outputs" json:"multi-step-stream-outputs"`
 	SchedulerDelayFactor                       *int     `mapstructure:"scheduler-delay-factor" json:"scheduler-delay-factor" validate:"omitempty"`
@@ -106,18 +116,18 @@ type VLLMConfig struct {
 	SpeculativeDisableByBatchSize              *bool    `mapstructure:"speculative-disable-by-batch-size" json:"speculative-disable-by-batch-size"`
 	NgramPromptLookupMax                       *int     `mapstructure:"ngram-prompt-lookup-max" json:"ngram-prompt-lookup-max" validate:"omitempty"`
 	NgramPromptLookupMin                       *int     `mapstructure:"ngram-prompt-lookup-min" json:"ngram-prompt-lookup-min" validate:"omitempty"`
-	SpecDecodingAcceptanceMethod               *string  `mapstructure:"spec-decoding-acceptance-method" json:"spec-decoding-acceptance-method" validate:"omitempty,oneof=rejection-sampler typical-acceptance-sampler"`
+	SpecDecodingAcceptanceMethod               *string  `mapstructure:"spec-decoding-acceptance-method" json:"spec-decoding-acceptance-method" validate:"omitempty,oneof=None rejection-sampler typical-acceptance-sampler"`
 	TypicalAcceptanceSamplerPosteriorThreshold *float64 `mapstructure:"typical-acceptance-sampler-posterior-threshold" json:"typical-acceptance-sampler-posterior-threshold" validate:"omitempty"`
 	TypicalAcceptanceSamplerPosteriorAlpha     *float64 `mapstructure:"typical-acceptance-sampler-posterior-alpha" json:"typical-acceptance-sampler-posterior-alpha" validate:"omitempty"`
 	DisableLogprobsDuringSpecDecoding          *bool    `mapstructure:"disable-logprobs-during-spec-decoding" json:"disable-logprobs-during-spec-decoding"`
 	ModelLoaderExtraConfig                     *string  `mapstructure:"model-loader-extra-config" json:"model-loader-extra-config" validate:"omitempty"`
-	IgnorePatterns                             *string  `mapstructure:"ignore-patterns" json:"ignore-patterns" validate:"omitempty"`
+	IgnorePatterns                             []string `mapstructure:"ignore-patterns" json:"ignore-patterns" validate:"omitempty"`
 	PreemptionMode                             *string  `mapstructure:"preemption-mode" json:"preemption-mode" validate:"omitempty"`
 	QLoraAdapterNameOrPath                     *string  `mapstructure:"qlora-adapter-name-or-path" json:"qlora-adapter-name-or-path" validate:"omitempty"`
 	OtlpTracesEndpoint                         *string  `mapstructure:"otlp-traces-endpoint" json:"otlp-traces-endpoint" validate:"omitempty"`
 	CollectDetailedTraces                      *bool    `mapstructure:"collect-detailed-traces" json:"collect-detailed-traces"`
 	DisableAsyncOutputProc                     *bool    `mapstructure:"disable-async-output-proc" json:"disable-async-output-proc"`
-	SchedulingPolicy                           *string  `mapstructure:"scheduling-policy" json:"scheduling-policy" validate:"omitempty,oneof=fcfs priority"`
+	SchedulingPolicy                           *string  `mapstructure:"scheduling-policy" json:"scheduling-policy" validate:"omitempty,oneof=None fcfs priority"`
 	OverrideNeuronConfig                       *string  `mapstructure:"override-neuron-config" json:"override-neuron-config" validate:"omitempty"`
 	OverridePoolerConfig                       *string  `mapstructure:"override-pooler-config" json:"override-pooler-config" validate:"omitempty"`
 	CompilationConfig                          *string  `mapstructure:"compilation-config" json:"compilation-config" validate:"omitempty"`
@@ -161,6 +171,11 @@ type ScalewayConfig struct {
 	ScalewaySecretKey string `mapstructure:"secret_key" validate:"required"`
 }
 
+type LocalConfig struct {
+	AcceleratorType string `mapstructure:"accelerator_type" validate:"required,oneof=jetson nvidia"`
+	GPUInstanceType string `mapstructure:"gpu_instance_type" validate:"required"`
+}
+
 type InstanceConfig struct {
 	Test        *string `mapstructure:"test"`
 	HealthCheck *string `mapstructure:"health_check"`
@@ -185,30 +200,55 @@ func GenerateVLLMCommand(vllmConfig *VLLMConfig) ([]string, error) {
 
 		s, ok := v.(string)
 		if ok {
+			// Skip explicitly disabled or unset string options
+			if s == "None" {
+				continue
+			}
 			localArgs = append(localArgs, fmt.Sprintf("--%s", k), s)
 			continue
 		}
 
-		number, ok := v.(float64)
-		if ok {
-			localArgs = append(localArgs, fmt.Sprintf("--%s", k), strconv.FormatFloat(number, 'f', 0, 64))
+		if number, ok := v.(float64); ok {
+			// preserve decimals for float flags
+			localArgs = append(localArgs, fmt.Sprintf("--%s", k), strconv.FormatFloat(number, 'f', -1, 64))
 			continue
 		}
 
 		b, ok := v.(bool)
 		if ok {
-			localArgs = append(localArgs, fmt.Sprintf("--%s", k), strconv.FormatBool(b))
+			// Only include boolean flags when explicitly true
+			if b {
+				localArgs = append(localArgs, fmt.Sprintf("--%s", k), strconv.FormatBool(b))
+			}
 			continue
 		}
 
 		logger.Warn().Str("key", k).Interface("value", v).Msg("Unknown type")
 	}
 
+	// Append engine port from benchmark config so vLLM serves on the configured port
+	// Assumptions per project rules: BenchmarkConfig is non-nil, EnginePort > 0 when set
+	enginePort := GetConfig().BenchmarkConfig.EnginePort
+	if enginePort > 0 {
+		localArgs = append(localArgs, "--port", strconv.Itoa(enginePort))
+	}
+
 	return localArgs, nil
 }
 
-func GenerateBenchmarkCommand(conf *Config, ip string) ([]string, error) {
-	localArgs := []string{"/home/ubuntu/ec2/cpu/benchmark.py", "--backend", conf.BenchmarkConfig.Backend, "--base-url", fmt.Sprintf("http://%s:8000", ip)}
+func GenerateBenchmarkCommand(conf *Config, ip string, port int) ([]string, error) {
+	script := resolveBenchmarkScriptPath(conf)
+	if strings.TrimSpace(script) == "" {
+		return nil, fmt.Errorf("benchmark.py not found; set benchmark.script_path or BENCHMARK_SCRIPT")
+	}
+
+	// Compute effective backend: fallback to top-level InferenceEngine when unset
+	effectiveBackend := strings.TrimSpace(conf.BenchmarkConfig.Backend)
+	if effectiveBackend == "" {
+		effectiveBackend = strings.TrimSpace(conf.InferenceEngine)
+	}
+
+	localArgs := []string{script, "--backend", effectiveBackend, "--base-url", fmt.Sprintf("http://%s:%d", ip, port)}
 
 	var inInterface map[string]interface{}
 	inrec, _ := json.Marshal(conf.BenchmarkConfig)
@@ -219,7 +259,8 @@ func GenerateBenchmarkCommand(conf *Config, ip string) ([]string, error) {
 			continue
 		}
 
-		if k == "token" || k == "backend" {
+		// Exclude fields not meant to be passed to benchmark.py directly
+		if k == "token" || k == "backend" || k == "script_path" || k == "engine-port" {
 			continue
 		}
 
@@ -229,9 +270,8 @@ func GenerateBenchmarkCommand(conf *Config, ip string) ([]string, error) {
 			continue
 		}
 
-		number, ok := v.(float64)
-		if ok {
-			localArgs = append(localArgs, fmt.Sprintf("--%s", k), strconv.FormatFloat(number, 'f', 0, 64))
+		if number, ok := v.(float64); ok {
+			localArgs = append(localArgs, fmt.Sprintf("--%s", k), strconv.FormatFloat(number, 'f', -1, 64))
 			continue
 		}
 
@@ -246,5 +286,45 @@ func GenerateBenchmarkCommand(conf *Config, ip string) ([]string, error) {
 
 	localArgs = append(localArgs, "--model", conf.VLLMConfig.Model)
 
+	// Forward the CLI --config path as the deployment config file
+	if cfgPath := strings.TrimSpace(viper.GetString("config")); cfgPath != "" {
+		localArgs = append(localArgs, "--deployment-config-file", cfgPath)
+	}
+
 	return localArgs, nil
+}
+
+// resolveBenchmarkScriptPath finds the benchmark.py path in a portable way:
+// 1) BENCHMARK_SCRIPT env var
+// 2) benchmark.script_path in TOML
+// 3) common repo-relative locations
+func resolveBenchmarkScriptPath(conf *Config) string {
+	// 1) env var
+	if s := strings.TrimSpace(os.Getenv("BENCHMARK_SCRIPT")); s != "" {
+		return s
+	}
+	// 2) from config
+	if conf != nil && conf.BenchmarkConfig != nil {
+		if s := strings.TrimSpace(conf.BenchmarkConfig.ScriptPath); s != "" {
+			return s
+		}
+	}
+	// 3) candidates relative to current working dir
+	candidates := []string{
+		"instance-builder/aws/ec2/cpu/benchmark.py",
+		"./instance-builder/aws/ec2/cpu/benchmark.py",
+		"benchmark.py",
+		"./benchmark.py",
+		"/home/ubuntu/ec2/cpu/benchmark.py",
+	}
+	for _, c := range candidates {
+		abs, err := filepath.Abs(c)
+		if err != nil {
+			continue
+		}
+		if st, err := os.Stat(abs); err == nil && !st.IsDir() {
+			return abs
+		}
+	}
+	return ""
 }

@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"os"
 
+	"github.com/spf13/cobra"
+
 	bench "github.com/heka-ai/benchmark-cli/internal/bench"
 	cloud_generator "github.com/heka-ai/benchmark-cli/internal/cloud/generator"
 	"github.com/heka-ai/benchmark-cli/pkg/config"
-	"github.com/spf13/cobra"
 )
 
 // Output the results of the benchmark

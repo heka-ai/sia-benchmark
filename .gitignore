@@ -1,2 +1,7 @@
 build/
+bin/
 results.json
+.DS_Store
+.idea/
+.vscode/
+.env

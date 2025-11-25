@@ -1,100 +1,90 @@
 package results
 
 type Results struct {
-	Date                 *string      `json:"date"`
-	Backend              *string      `json:"backend"`
-	ModelID              *string      `json:"model_id"`
-	TokenizerID          *string      `json:"tokenizer_id"`
-	BestOf               *int         `json:"best_of"`
-	NumPrompts           *int         `json:"num_prompts"`
-	Input                *[]string    `json:"input"`
-	ExpectedOutput       *[]string    `json:"expected_output"`
-	RequestRate          *string      `json:"request_rate"`
-	Duration             *float64     `json:"duration"`
-	Completed            *int         `json:"completed"`
-	TotalInputTokens     *int         `json:"total_input_tokens"`
-	TotalOutputTokens    *int         `json:"total_output_tokens"`
-	RequestThroughput    *float64     `json:"request_throughput"`
-	OutputThroughput     *float64     `json:"output_throughput"`
-	TotalTokenThroughput *float64     `json:"total_token_throughput"`
-	InputLens            *[]int       `json:"input_lens"`
-	OutputLens           *[]int       `json:"output_lens"`
-	Ttfts                *[]float64   `json:"ttfts"`
-	Itls                 *[][]float64 `json:"itls"`
-	GeneratedTexts       *[]string    `json:"generated_texts"`
-	Errors               *[]string    `json:"errors"`
-	MeanTtftMs           *float64     `json:"mean_ttft_ms"`
-	MedianTtftMs         *float64     `json:"median_ttft_ms"`
-	StdTtftMs            *float64     `json:"std_ttft_ms"`
-	P99TtftMs            *float64     `json:"p99_ttft_ms"`
-	MeanTpotMs           *float64     `json:"mean_tpot_ms"`
-	MedianTpotMs         *float64     `json:"median_tpot_ms"`
-	Results              *Result      `json:"results"`
-	Environment          *Environment `json:"environment"`
-	Model                *Model       `json:"model"`
-	Task                 *Task        `json:"task"`
-	Benchmark            *Benchmark   `json:"benchmark"`
-	Dataset              *Dataset     `json:"dataset"`
-	Evaluation           *Evaluation  `json:"evaluation"`
-	BenchmarkID          *string      `json:"benchmark_id"`
-	DatasetPath          *string      `json:"dataset_path"`
-	DatasetRevision      *string      `json:"dataset_revision"`
-	DatasetSplit         *string      `json:"dataset_split"`
+	Results          *Result           `json:"results"`
+	Environment      *Environment      `json:"environment"`
+	Model            *Model            `json:"model"`
+	Task             *Task             `json:"task"`
+	Benchmark        *Benchmark        `json:"benchmark"`
+	Dataset          *Dataset          `json:"dataset"`
+	Metrics          *Metrics          `json:"metrics"`
+	Evaluation       *Evaluation       `json:"evaluation"`
+	BenchmarkID      *string           `json:"benchmark_id"`
+	InferenceEngine  *string           `json:"inference_engine"`
+	DeploymentParams *DeploymentParams `json:"deployment_params"`
 }
 
 type Environment struct {
-	Id                 *string `json:"id"`
-	Regions            *string `json:"regions"`
-	Ec2CpuInstanceType *string `json:"ec2_cpu_instance_type"`
-	Ec2GpuInstanceType *string `json:"ec2_gpu_instance_type"`
+	Provider        *string `json:"provider"`
+	CPUInstanceType *string `json:"cpu_instance_type"`
+	GPUInstanceType *string `json:"gpu_instance_type"`
+	Region          *string `json:"region"`
 }
 
 type Model struct {
-	Id   *string `json:"id"`
-	Name *string `json:"name"`
+	Name        *string `json:"name"`
+	TokenizerID *string `json:"tokenizer_id"`
+	URL         *string `json:"url"`
+	BestOf      *int    `json:"best_of"`
 }
 
 type Task struct {
-	Id   *string `json:"id"`
-	Name *string `json:"name"`
+	// Task is typically empty in the API response
 }
 
 type Benchmark struct {
-	Id             *string `json:"id"`
-	Fk_model       *string `json:"fk_model"`
-	Fk_environment *string `json:"fk_environment"`
-	Fk_task        *string `json:"fk_task"`
-	Fk_dataset     *string `json:"fk_dataset"`
-	Date           *string `json:"date"`
+	Date                 *string             `json:"date"`
+	Metrics              *map[string]float64 `json:"metrics"`
+	RequestRate          *string             `json:"request_rate"`
+	Duration             *float64            `json:"duration"`
+	Completed            *int                `json:"completed"`
+	TotalOutputTokens    *int                `json:"total_output_tokens"`
+	RequestThroughput    *float64            `json:"request_throughput"`
+	OutputThroughput     *float64            `json:"output_throughput"`
+	TotalTokenThroughput *float64            `json:"total_token_throughput"`
+	NumPrompts           *int                `json:"num_prompts"`
 }
 
 type Dataset struct {
-	Id       *string `json:"id"`
-	Url      *string `json:"url"`
+	URL      *string `json:"url"`
 	Revision *string `json:"revision"`
 	Split    *string `json:"split"`
+	Name     *string `json:"name"`
+}
+
+type Metrics struct {
+	AnswerRelevancyMetric     *float64 `json:"AnswerRelevancyMetric"`
+	BiasMetric                *float64 `json:"BiasMetric"`
+	FaithfulnessMetric        *float64 `json:"FaithfulnessMetric"`
+	ContextualPrecisionMetric *float64 `json:"ContextualPrecisionMetric"`
+	ContextualRecallMetric    *float64 `json:"ContextualRecallMetric"`
+	ContextualRelevancyMetric *float64 `json:"ContextualRelevancyMetric"`
 }
 
 type Evaluation struct {
-	Id                  *string             `json:"id"`
-	EvaluationModel     *string             `json:"evaluation_model"`
-	PromptTemplate      *string             `json:"prompt_template"`
-	TopK                *int                `json:"top_k"`
-	ShowIndicator       *bool               `json:"show_indicator"`
-	PrintResults        *bool               `json:"print_results"`
-	WriteCache          *bool               `json:"write_cache"`
-	UseCache            *bool               `json:"use_cache"`
-	SkipOnMissingParams *bool               `json:"skip_on_missing_params"`
-	VerboseMode         *bool               `json:"verbose_mode"`
-	ThrottleValue       *int                `json:"throttle_value"`
-	MetricsDesired      *map[string]float64 `json:"metrics_desired"`
+	EvaluationModel *string             `json:"evaluation_model"`
+	PromptTemplate  *string             `json:"prompt_template"`
+	TopK            *int                `json:"top_k"`
+	MetricsDesired  *map[string]float64 `json:"metrics_desired"`
+}
+
+type DeploymentParams struct {
+	Model              *string `json:"model"`
+	Dtype              *string `json:"dtype"`
+	Seed               *int    `json:"seed"`
+	KVCacheDtype       *string `json:"kv-cache-dtype"`
+	MaxModelLen        *string `json:"max-model-len"`
+	MaxNumSeqs         *int    `json:"max_num_seqs"`
+	TokenizerMode      *string `json:"tokenizer_mode"`
+	TensorParallelSize *string `json:"tensor_parallel_size"`
 }
 
 type Result struct {
-	Id             *[]string    `json:"id"`
 	Input          *[]string    `json:"input"`
 	ExpectedOutput *[]string    `json:"expected_output"`
 	ActualOutput   *[]string    `json:"actual_output"`
 	Itls           *[][]float64 `json:"itls"`
 	Ttfts          *[]float64   `json:"ttfts"`
+	InputLens      *[]int       `json:"input_lens"`
+	OutputLens     *[]int       `json:"output_lens"`
 }
