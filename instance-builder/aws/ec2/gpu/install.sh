@@ -1,47 +1,47 @@
 #!/bin/bash
+#
+# GPU image bootstrap: install uv-managed Python 3.12 + vLLM stack.
 
-echo "Installing system dependencies"
+set -euo pipefail
 
-apt-get update
+SECTION="GPU INSTALL"
+info() { echo "[$SECTION] $*"; }
 
-apt-get install -y \
-    software-properties-common \
-    openssh-client \
-    curl \
-    git
+info "--------------------------------------------------"
+info "Installing system dependencies"
+info "--------------------------------------------------"
+apt-get update -y
+apt-get install -y git curl jq openssh-client
 
-add-apt-repository ppa:deadsnakes/ppa -y
-apt update
-apt install -y python3.12 python3.12-venv python3.12-dev
+info "--------------------------------------------------"
+info "Installing uv for user 'ubuntu'"
+info "--------------------------------------------------"
+sudo -u ubuntu curl -LsSf https://astral.sh/uv/install.sh | sudo -u ubuntu sh
 
-echo "Bootstrapping pip for Python 3.12"
-# Ensure pip is installed for Python 3.12 (avoid system pip that requires distutils)
-if ! python3.12 -m pip --version >/dev/null 2>&1; then
-  if ! python3.12 -m ensurepip --upgrade >/dev/null 2>&1; then
-    curl -fsSL https://bootstrap.pypa.io/get-pip.py | python3.12
-  fi
-fi
+info "--------------------------------------------------"
+info "Preparing uv environment and vLLM packages"
+info "--------------------------------------------------"
+sudo -u ubuntu bash -c '
+  set -euo pipefail
+  export PATH=/home/ubuntu/.local/bin:$PATH
+  source /home/ubuntu/.local/bin/env
+  cd /home/ubuntu
 
-echo "Setting up vllm"
+  uv python install 3.12
+  uv python pin 3.12
+  uv venv
 
-echo "Installing setuptools and chz as they are required for gptoss"
-python3.12 -m pip install --upgrade pip
-python3.12 -m pip install setuptools==68.2.2
-python3.12 -m pip install chz
-python3.12 -m pip install hf-transfer
+  uv pip install vllm==0.10.2 --torch-backend=auto --index-strategy unsafe-best-match
+  uv run python3 -c "import vllm; print(\"vLLM version:\", vllm.__version__)"
 
-echo "Installing vllm (GPT-OSS)"
-python3.12 -m pip install --pre "vllm==0.10.1+gptoss" \
-  --extra-index-url https://wheels.vllm.ai/gpt-oss \
-  --extra-index-url https://download.pytorch.org/whl/nightly/cu128
+  echo "--------------------------------------------------"
+  echo "vLLM and dependencies installed successfully"
+  echo "Testing vLLM CLI via uv"
+  echo "--------------------------------------------------"
 
+  uv run vllm serve --help
+'
 
-VLLM_BIN=$(command -v vllm) || { echo "Error: vllm not found in PATH" >&2; exit 1; }
-VLLM_PY=$(head -n1 "$VLLM_BIN" | sed 's/^#!//')
-if [ -z "$VLLM_PY" ]; then
-  echo "Error: failed to resolve vllm interpreter" >&2
-  exit 1
-fi
-"$VLLM_PY" -m pip install -U xformers
-
-echo "Installation complete"
+info "--------------------------------------------------"
+info "GPU environment ready. Use: uv run vllm serve --model ..."
+info "--------------------------------------------------"
