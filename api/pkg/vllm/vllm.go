@@ -67,16 +67,18 @@ func (v *VLLM) Start(ctx context.Context) error {
 	// Inject the port flag for vllm serve.
 	localArgs = append(localArgs, "--port", fmt.Sprintf("%d", port))
 
-	logger.Info().Str("command", "vllm "+strings.Join(localArgs, " ")).Msg("Launching VLLM with the following command")
+	logger.Info().Str("command", "uv run vllm "+strings.Join(localArgs, " ")).Msg("Launching VLLM with the following command")
 
-	// Resolve the path to the vllm binary to ensure vllm is installed on host machine.
-	logger.Info().Str("PATH", os.Getenv("PATH")).Msg("Environment PATH before resolving vllm")
-	bin, err := resolveVLLMBinary()
+	// Resolve the path to uv which orchestrates the Python environment for vllm.
+	logger.Info().Str("PATH", os.Getenv("PATH")).Msg("Environment PATH before resolving uv")
+	uvBin, err := exec.LookPath("uv")
 	if err != nil {
-		return err
+		return fmt.Errorf("uv not found in PATH: please install uv or adjust PATH")
 	}
 
-	v.cmd = exec.CommandContext(ctx, bin, localArgs...)
+	uvArgs := append([]string{"run", "vllm"}, localArgs...)
+
+	v.cmd = exec.CommandContext(ctx, uvBin, uvArgs...)
 	v.cmd.Env = append(os.Environ(),
 		"HF_TOKEN="+v.config.GetConfig().BenchmarkConfig.Token,
 		"HF_HUB_ENABLE_HF_TRANSFER=1",
@@ -141,25 +143,4 @@ func (v *VLLM) Stop(ctx context.Context) error {
 		// Force terminate if it did not exit in time.
 		return v.cmd.Process.Kill()
 	}
-}
-
-// resolveVLLMBinary determines the path to the vllm executable.
-func resolveVLLMBinary() (string, error) {
-	if p, err := exec.LookPath("vllm"); err == nil {
-		return p, nil
-	}
-	// Fallback to common installation locations
-	candidates := []string{
-		"/opt/pytorch/bin/vllm",
-		"/usr/local/bin/vllm",
-		"/usr/bin/vllm",
-	}
-	for _, c := range candidates {
-		if st, err := os.Stat(c); err == nil && !st.IsDir() {
-			if st.Mode()&0111 != 0 {
-				return c, nil
-			}
-		}
-	}
-	return "", fmt.Errorf("vllm not installed or not in PATH (PATH=%s)", os.Getenv("PATH"))
 }
