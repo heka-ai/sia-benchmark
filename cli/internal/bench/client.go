@@ -268,24 +268,7 @@ func (c *Client) GetLogs(ip string, logsType string) (string, error) {
 	return string(body), nil
 }
 
-func (c *Client) FollowBenchLogs(ip string, engineType string, interval time.Duration, print bool) error {
-	last := ""
-	for {
-		logs, err := c.GetLogs(ip, engineType)
-		if err != nil {
-			return err
-		}
-		if print {
-			if logs != last {
-				logger.Info().Msg(logs)
-				last = logs
-			}
-		}
-		time.Sleep(interval)
-	}
-}
-
-func (c *Client) FollowBenchLogsWithTimeout(ip string, engineType string, interval time.Duration, timeout time.Duration, print bool) error {
+func (c *Client) FollowBenchLogs(ip string, engineType string, interval time.Duration, timeout time.Duration, print bool) error {
 	last := ""
 	lastActivity := time.Now()
 

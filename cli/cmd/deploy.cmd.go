@@ -59,7 +59,7 @@ func deploy(wait bool) {
 
 		// Show logs while waiting
 		logger.Info().Msg("Streaming LLM logs...")
-		llmClient.FollowBenchLogsWithTimeout(llmInstanceIP, "llm", 1*time.Second, 5*time.Minute, true)
+		llmClient.FollowBenchLogs(llmInstanceIP, "llm", 1*time.Second, 5*time.Minute, true)
 	} else {
 		logger.Info().Msg("Model is downloading and being initialized on the LLM instance, wait a few minutes")
 	}

@@ -33,11 +33,9 @@ echo "HF_TOKEN=%s" >> /home/ubuntu/.bashrc
 cat > /home/ubuntu/config.toml << 'BENCH_EOF'
 %s
 BENCH_EOF
-# Also export HF_TOKEN for the api.service (EnvironmentFile)
-printf 'HF_TOKEN=%s\n' | sudo tee /etc/default/benchmark-api >/dev/null
 sudo systemctl daemon-reload
 sudo systemctl restart api
-		`, c.config.APIKey, c.config.BenchmarkConfig.Token, configString, c.config.BenchmarkConfig.Token)
+		`, c.config.APIKey, c.config.BenchmarkConfig.Token, configString)
 
 	// Optional networking from config
 	subnetID := viper.GetString("aws.subnet_id")

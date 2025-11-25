@@ -3,7 +3,6 @@ package api_http
 import (
 	"context"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -13,15 +12,7 @@ func (s *HttpServer) generateVLLMRouter(router *gin.Engine) {
 	vllmRouter := router.Group("/vllm")
 
 	vllmRouter.GET("/start", func(c *gin.Context) {
-		// Use port from config, with optional query parameter override
-		port := s.config.GetConfig().BenchmarkConfig.EnginePort
-		if p := c.Query("port"); p != "" {
-			if v, err := strconv.Atoi(p); err == nil && v > 0 && v < 65536 {
-				port = v
-			}
-		}
-
-		err := s.vllm.StartWithPort(context.Background(), port)
+		err := s.vllm.Start(context.Background())
 		if err != nil {
 			logger.Error().Err(err).Msg("Failed to start VLLM")
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

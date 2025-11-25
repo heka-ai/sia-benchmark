@@ -8,9 +8,7 @@ import (
 )
 
 type BenchStartRequest struct {
-	IP             string `json:"ip"`
-	Port           int    `json:"port"`
-	ResultFilename string `json:"result_filename"`
+	IP string `json:"ip"`
 }
 
 func (s *HttpServer) generateBenchRouter(router *gin.Engine) {
@@ -26,20 +24,7 @@ func (s *HttpServer) generateBenchRouter(router *gin.Engine) {
 
 		logger.Info().Str("ip", req.IP).Msg("Starting benchmark")
 
-		// Use config values as defaults, with request parameter override
-		port := req.Port
-		if port <= 0 {
-			port = s.config.GetConfig().BenchmarkConfig.EnginePort
-		}
-		result := req.ResultFilename
-		if strings.TrimSpace(result) == "" {
-			result = s.config.GetConfig().BenchmarkConfig.ResultFilename
-			if strings.TrimSpace(result) == "" {
-				result = "/home/ubuntu/metrics.json"
-			}
-		}
-
-		err := s.benchmark.Start(req.IP, port, result)
+		err := s.benchmark.Start(req.IP)
 
 		if err != nil {
 			logger.Error().Err(err).Msg("Failed to start benchmark")

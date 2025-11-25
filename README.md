@@ -37,7 +37,7 @@ Once the CLI is installed you can use the benchmark tool by running the followin
 bench validate --config <path_to_config_file>
 ```
 
-Add `--vllm-command` to display vllm command and `--benchmark-command` to display benchmark command. Empty strings in the command will be treated as unset.
+Add `--vllm-command` to display vllm command and `--benchmark-command` to display benchmark command. These flags only print the computed commands; configuration values (model, ports, result filename, etc.) must be defined in `bench.toml` rather than overridden via CLI.
 
 ### Creds
 

@@ -64,15 +64,19 @@ func NewBenchmark(lc fx.Lifecycle, config *apiConfig.APIConfig) *Benchmark {
 	return benchmark
 }
 
-func (b *Benchmark) Start(ip string, port int, resultFilename string) error {
-	localArgs, err := cliConfig.GenerateBenchmarkCommand(b.config.GetConfig(), ip, port)
+func (b *Benchmark) Start(ip string) error {
+	cfg := b.config.GetConfig()
+	port := cfg.BenchmarkConfig.EnginePort
+	resultFilename := strings.TrimSpace(cfg.BenchmarkConfig.ResultFilename)
+	if resultFilename == "" {
+		resultFilename = PATH_TO_RESULTS
+	}
+
+	localArgs, err := cliConfig.GenerateBenchmarkCommand(cfg, ip, port)
 	if err != nil {
 		return err
 	}
 
-	if strings.TrimSpace(resultFilename) == "" {
-		resultFilename = PATH_TO_RESULTS
-	}
 	b.resultPath = resultFilename
 	localArgs = append(localArgs, "--save-result", "--result-filename", resultFilename)
 
