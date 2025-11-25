@@ -76,6 +76,8 @@ func (v *VLLM) Start(ctx context.Context) error {
 
 	logger.Info().Str("command", "uv run vllm "+strings.Join(localArgs, " ")).Msg("Launching VLLM with the following command")
 
+	logger.Info().Str("command", "uv run vllm "+strings.Join(localArgs, " ")).Msg("Launching VLLM with the following command")
+
 	// Resolve the path to uv which orchestrates the Python environment for vllm.
 	logger.Info().Str("PATH", os.Getenv("PATH")).Msg("Environment PATH before resolving uv")
 	uvBin, err := exec.LookPath("uv")
