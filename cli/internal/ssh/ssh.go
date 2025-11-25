@@ -6,6 +6,11 @@ import (
 	log "github.com/heka-ai/benchmark-cli/internal/logs"
 	"github.com/melbahja/goph"
 	"golang.org/x/crypto/ssh"
+
+	"crypto/rand"
+	"crypto/rsa"
+	"encoding/pem"
+	"fmt"
 )
 
 var logger = log.GetLogger("ssh")
@@ -58,4 +63,32 @@ func (c *SSHClient) Run(command string) error {
 	}
 
 	return nil
+}
+
+// GenerateSSHKey generates an SSH key pair and saves them to files
+func GenerateSSHKey(bits int) (string, string, error) {
+	// Generate RSA private key
+	privateKey, err := rsa.GenerateKey(rand.Reader, bits)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to generate private key: %v", err)
+	}
+
+	pemBlock, err := ssh.MarshalPrivateKey(privateKey, "")
+	if err != nil {
+		return "", "", fmt.Errorf("failed to generate private key PEM Block: %v", err)
+	}
+
+	// Encode private key to PEM format
+	privateKeyPEM := pem.EncodeToMemory(pemBlock)
+
+	// Generate public key from private key
+	publicKey, err := ssh.NewPublicKey(&privateKey.PublicKey)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to generate public key: %v", err)
+	}
+
+	// Get OpenSSH format for the public key
+	publicKeyBytes := ssh.MarshalAuthorizedKey(publicKey)
+
+	return string(publicKeyBytes), string(privateKeyPEM), nil
 }
