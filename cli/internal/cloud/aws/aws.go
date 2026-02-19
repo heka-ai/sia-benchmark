@@ -35,7 +35,7 @@ type AWSClient struct {
 
 func NewClient(config *config.Config) *AWSClient {
 	return &AWSClient{
-		cli:     bench.NewClient(config.APIKey),
+		cli:     bench.NewClient(config.GeneralConfig.APIKey),
 		config:  config,
 		wasInit: false,
 	}
@@ -121,7 +121,7 @@ func (c *AWSClient) deleteInstance(instanceID string, dryRun bool) error {
 }
 
 func (c *AWSClient) createInstance(instanceType string, dryRun bool, ami string, tags []types.Tag, userData string) error {
-	instanceName := fmt.Sprintf("benchmark-%s", c.config.BenchmarkID)
+	instanceName := fmt.Sprintf("benchmark-%s", c.config.GeneralConfig.BenchmarkID)
 
 	defaultTags := []types.Tag{
 		{
@@ -130,7 +130,7 @@ func (c *AWSClient) createInstance(instanceType string, dryRun bool, ami string,
 		},
 		{
 			Key:   aws.String("bench-id"),
-			Value: aws.String(c.config.BenchmarkID),
+			Value: aws.String(c.config.GeneralConfig.BenchmarkID),
 		},
 		{
 			Key:   aws.String("Name"),
@@ -183,7 +183,7 @@ func (c *AWSClient) GetBenchmarkInstances() ([]types.Instance, error) {
 		Filters: []types.Filter{
 			{
 				Name:   aws.String(fmt.Sprintf("tag:%s", constants.BenchmarkIDTag)),
-				Values: []string{c.config.BenchmarkID},
+				Values: []string{c.config.GeneralConfig.BenchmarkID},
 			},
 			{
 				Name: aws.String("instance-state-name"),

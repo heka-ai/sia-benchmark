@@ -55,7 +55,7 @@ func ReadConfig() *config.Config {
 	}
 
 	// Delegate reading & validation to CLI package
-	config.InitConfig()
+	config.InitConfig(nil)
 	c := config.GetConfig()
 	logger.Info().Interface("config", c).Msgf("Config validated successfully")
 	return &c

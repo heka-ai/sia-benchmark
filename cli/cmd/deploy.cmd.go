@@ -46,8 +46,8 @@ func deploy(wait bool) {
 	// Use port from config instead of flag
 	port := c.BenchmarkConfig.EnginePort
 
-	llmClient := bench.NewClient(c.APIKey)
-	err = llmClient.Deploy(llmInstanceIP, c.InferenceEngine, port)
+	llmClient := bench.NewClient(c.GeneralConfig.APIKey)
+	err = llmClient.Deploy(llmInstanceIP, c.GeneralConfig.InferenceEngine, port)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to deploy the LLM instance")
 	}

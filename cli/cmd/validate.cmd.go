@@ -30,13 +30,20 @@ func ValidateCmd() *cobra.Command {
 				return
 			}
 
-			ValidateExec(vllmModel, benchmarkModel)
+			excludedSections, err := cmd.Flags().GetStringArray("exclude-section")
+			if err != nil {
+				logger.Error().Err(err).Msg("Error getting excluded sections")
+				return
+			}
+
+			ValidateExec(vllmModel, benchmarkModel, excludedSections)
 		},
 	}
 
 	// Default to true so commands are printed during validate unless explicitly disabled
 	cmd.Flags().Bool("vllm-command", false, "The model to use for the VLLM command")
 	cmd.Flags().Bool("benchmark-command", false, "The model to use for the benchmark command")
+	cmd.Flags().StringArray("exclude-section", []string{}, "Exclude a section from validation (can be used multiple times). Examples: --exclude-section benchmark --exclude-section vllm")
 
 	return cmd
 }
@@ -49,12 +56,19 @@ func formatCmd(binary string, args []string) string {
 }
 
 // This only validate that the TOML config file is valid
-func ValidateExec(vllmModel bool, benchmarkModel bool) {
+func ValidateExec(vllmModel bool, benchmarkModel bool, excludedSections []string) {
 	logger.Info().Msg("Validating the config file")
-	config.Init()
+	if len(excludedSections) > 0 {
+		logger.Info().Strs("excluded_sections", excludedSections).Msg("Excluding sections from validation")
+	}
+	config.InitWithExclusions(excludedSections)
 
 	if vllmModel {
 		cfg := config.GetConfig()
+		if cfg.VLLMConfig == nil {
+			logger.Error().Msg("Cannot generate VLLM command: vllm section is excluded")
+			return
+		}
 
 		localArgs, err := config.GenerateVLLMCommand(cfg.VLLMConfig)
 		if err != nil {
@@ -62,11 +76,22 @@ func ValidateExec(vllmModel bool, benchmarkModel bool) {
 			return
 		}
 
-		logger.Info().Msg("VLLM command generated for your config:\n" + formatCmd("vllm", localArgs))
+		token := ""
+		if cfg.BenchmarkConfig != nil {
+			token = cfg.BenchmarkConfig.Token
+		}
+		if token == "" {
+			token = "${HF_TOKEN}"
+		}
+		logger.Info().Msg("VLLM command generated for your config:\n" + formatCmd("HF_TOKEN="+token+" vllm", localArgs))
 	}
 
 	if benchmarkModel {
 		cfg := config.GetConfig()
+		if cfg.BenchmarkConfig == nil {
+			logger.Error().Msg("Cannot generate benchmark command: benchmark section is excluded")
+			return
+		}
 
 		// Use EnginePort from config for validation output instead of a hardcoded default
 		localArgs, err := config.GenerateBenchmarkCommand(&cfg, "127.0.0.1", cfg.BenchmarkConfig.EnginePort)

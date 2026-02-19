@@ -24,7 +24,7 @@ func connect() {
 	c := config.GetConfig()
 
 	cloud := cloud_generator.NewCloud(&c)
-	client := bench.NewClient(c.APIKey)
+	client := bench.NewClient(c.GeneralConfig.APIKey)
 
 	llmInstanceIP, err := cloud.GetLLMInstanceIP()
 	if err != nil {

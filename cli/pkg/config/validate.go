@@ -25,7 +25,12 @@ var config Config
 
 // Init the config and validate it
 func Init() {
-	InitConfig()
+	InitConfig(nil)
+}
+
+// InitWithExclusions initializes config with excluded sections
+func InitWithExclusions(excludedSections []string) {
+	InitConfig(excludedSections)
 }
 
 func InitFlags() {}
@@ -34,7 +39,7 @@ func GetConfig() Config {
 	return config
 }
 
-func InitConfig() {
+func InitConfig(excludedSections []string) {
 	localConfig := Config{}
 
 	filename := viper.GetString("config")
@@ -65,23 +70,115 @@ func InitConfig() {
 	// and clear zero values for pointer ints where omitempty is desired.
 	normalizeConfig(&localConfig)
 
+	// Build excluded sections set
+	excludedSet := make(map[string]bool)
+	for _, section := range excludedSections {
+		excludedSet[strings.ToLower(strings.TrimSpace(section))] = true
+	}
+
+	// Set excluded sections to nil to skip their validation
+	if excludedSet["general"] {
+		localConfig.GeneralConfig = nil
+	} else if len(excludedSections) > 0 {
+		logger.Info().Msg("Validating general section")
+	}
+	if excludedSet["benchmark"] {
+		localConfig.BenchmarkConfig = nil
+	} else if len(excludedSections) > 0 {
+		logger.Info().Msg("Validating benchmark section")
+	}
+	if excludedSet["vllm"] {
+		localConfig.VLLMConfig = nil
+	} else if len(excludedSections) > 0 {
+		logger.Info().Msg("Validating vllm section")
+	}
+	if excludedSet["aws"] {
+		localConfig.AWSConfig = nil
+	} else if len(excludedSections) > 0 {
+		logger.Info().Msg("Validating aws section")
+	}
+	if excludedSet["local"] {
+		localConfig.LocalConfig = nil
+	} else if len(excludedSections) > 0 {
+		logger.Info().Msg("Validating local section")
+	}
+	if excludedSet["instance"] {
+		localConfig.InstanceConfig = nil
+	} else if len(excludedSections) > 0 {
+		logger.Info().Msg("Validating instance section")
+	}
+
+	// Validate config
 	validate := validator.New()
 	err = validate.Struct(localConfig)
 	if err != nil {
-		// TODO: improve errors handling
-		for _, err := range err.(validator.ValidationErrors) {
-			logger.Error().Msgf("Failed to validate config, expected %s, got %s (tags: %s)", err.Field(), err.Value(), err.Tag())
-			// Add explicit guidance for missing HF token
-			if err.Field() == "Token" && err.Tag() == "required" {
-				logger.Error().Msg("benchmark.token is required. Set it in [benchmark] token = \"...\" or export one of: HF_TOKEN, HUGGINGFACEHUB_API_TOKEN, HF_API_TOKEN")
-			}
-			logger.Error().Err(err).Msg("validation error")
+		// Filter out errors from excluded sections
+		// required_if validations still trigger even when sections are nil, so we filter those errors
+		fieldToSection := map[string]string{
+			"generalconfig":   "general",
+			"benchmarkconfig": "benchmark",
+			"vllmconfig":      "vllm",
+			"awsconfig":       "aws",
+			"localconfig":     "local",
+			"instanceconfig":  "instance",
 		}
-		os.Exit(1)
+
+		var filteredErrors []validator.FieldError
+		for _, err := range err.(validator.ValidationErrors) {
+			fieldName := strings.ToLower(err.Field())
+			// Check if error is from an excluded section
+			if section, ok := fieldToSection[fieldName]; ok && excludedSet[section] {
+				continue
+			}
+			// Also check namespace for nested fields (e.g., "Config.GeneralConfig.Provider")
+			ns := strings.ToLower(err.StructNamespace())
+			if strings.Contains(ns, "generalconfig") && excludedSet["general"] {
+				continue
+			}
+			filteredErrors = append(filteredErrors, err)
+		}
+
+		if len(filteredErrors) > 0 {
+			for _, err := range filteredErrors {
+				logger.Error().Msgf("Failed to validate config, expected %s, got %s (tags: %s)", err.Field(), err.Value(), err.Tag())
+				if err.Field() == "Token" && err.Tag() == "required" {
+					logger.Error().Msg("benchmark.token is required. Set it in [benchmark] token = \"...\" or export one of: HF_TOKEN, HUGGINGFACEHUB_API_TOKEN, HF_API_TOKEN")
+				}
+				logger.Error().Err(err).Msg("validation error")
+			}
+			os.Exit(1)
+		}
 	}
 
-	// Provider-specific resource validation
-	validateResourcesAllocation(&localConfig)
+	// Custom validation for required_if conditions (can't use validator tags with nested fields)
+	if localConfig.GeneralConfig != nil && !excludedSet["general"] {
+		if localConfig.GeneralConfig.Provider == "aws" && localConfig.AWSConfig == nil && !excludedSet["aws"] {
+			logger.Fatal().Msg("AWS config is required when provider is 'aws'")
+		}
+		if localConfig.GeneralConfig.Provider == "local" && localConfig.LocalConfig == nil && !excludedSet["local"] {
+			logger.Fatal().Msg("Local config is required when provider is 'local'")
+		}
+		if localConfig.GeneralConfig.InferenceEngine == "vllm" && localConfig.VLLMConfig == nil && !excludedSet["vllm"] {
+			logger.Fatal().Msg("VLLM config is required when inference_engine is 'vllm'")
+		}
+		if localConfig.GeneralConfig.Provider != "local" && localConfig.GeneralConfig.APIKey == "" && !excludedSet["general"] {
+			logger.Fatal().Msg("api_key is required when provider is not 'local'")
+		}
+	}
+
+	// Skip GPU resource validation if vllm is excluded or provider is not AWS
+	// (memory validation relies on AWS EC2 instance types)
+	if excludedSet["vllm"] {
+		logger.Info().Msg("Skipping GPU memory validation: vllm section is excluded")
+	} else if excludedSet["general"] {
+		logger.Info().Msg("Skipping GPU memory validation: Can't determine provider since general section is excluded")
+	} else if localConfig.GeneralConfig == nil {
+		logger.Info().Msg("Skipping GPU memory validation: Can't determine provider since general config is missing")
+	} else if localConfig.GeneralConfig.Provider != "aws" {
+		logger.Info().Str("provider", localConfig.GeneralConfig.Provider).Msg("Skipping GPU memory validation: only supported for AWS provider")
+	} else {
+		validateResourcesAllocation(&localConfig)
+	}
 
 	logger.Info().Msgf("Config validated successfully")
 
@@ -153,21 +250,21 @@ func normalizeConfig(cfg *Config) {
 }
 
 func validateResourcesAllocation(cfg *Config) {
-	if cfg == nil {
+	if cfg == nil || cfg.GeneralConfig == nil {
 		return
 	}
 
-	if cfg.InferenceEngine != "vllm" {
+	if cfg.GeneralConfig.InferenceEngine != "vllm" {
 		logger.Info().
-			Str("provider", cfg.Provider).
-			Str("engine", cfg.InferenceEngine).
+			Str("provider", cfg.GeneralConfig.Provider).
+			Str("engine", cfg.GeneralConfig.InferenceEngine).
 			Msg("Skipping GPU resources allocation check: not vLLM")
 		return
 	}
 
 	logger.Info().
-		Str("provider", cfg.Provider).
-		Str("engine", cfg.InferenceEngine).
+		Str("provider", cfg.GeneralConfig.Provider).
+		Str("engine", cfg.GeneralConfig.InferenceEngine).
 		Msg("Validating GPU memory against model size requirement")
 
 	// First, try to extract model size in B from the model string. If we can't, skip.
@@ -194,7 +291,7 @@ func validateResourcesAllocation(cfg *Config) {
 
 	if gpuGiB <= requiredGiB {
 		logger.Fatal().
-			Str("provider", cfg.Provider).
+			Str("provider", cfg.GeneralConfig.Provider).
 			Float64("gpu_gib", gpuGiB).
 			Int("model_b", modelB).
 			Float64("required_gib", requiredGiB).
@@ -226,7 +323,7 @@ func extractModelSizeBillions(model string) (int, bool) {
 // For AWS, it uses the SDK DescribeInstanceTypes; for local, it queries nvidia-smi
 // (falling back to tegrastats). Returns (value, true) on success; (0, false) otherwise.
 func getGpuTotalGiB(cfg *Config) (float64, bool) {
-	switch strings.ToLower(strings.TrimSpace(cfg.Provider)) {
+	switch strings.ToLower(strings.TrimSpace(cfg.GeneralConfig.Provider)) {
 	case "aws":
 		instanceType := strings.TrimSpace(cfg.AWSConfig.GPUInstanceType)
 		region := strings.TrimSpace(cfg.AWSConfig.Region)
