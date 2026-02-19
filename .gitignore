@@ -1,2 +1,9 @@
 build/
+bin/
 results.json
+.DS_Store
+.idea/
+.vscode/
+.env
+__pycache__
+metrics.json

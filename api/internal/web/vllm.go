@@ -2,7 +2,6 @@ package api_http
 
 import (
 	"context"
-	"io"
 	"net/http"
 	"strings"
 
@@ -32,20 +31,7 @@ func (s *HttpServer) generateVLLMRouter(router *gin.Engine) {
 	})
 
 	vllmRouter.GET("/logs", func(c *gin.Context) {
-		follow := c.Query("follow")
-		if follow == "true" {
-			ch := s.vllm.GetLogCh()
-			c.Stream(func(w io.Writer) bool {
-				line, ok := <-ch
-				if !ok {
-					return false
-				}
-				_, err := w.Write([]byte(line))
-				return err == nil
-			})
-		} else {
-			logs := s.vllm.GetLogsArchive()
-			c.String(http.StatusOK, strings.Join(logs, "\n"))
-		}
+		logs := s.vllm.GetLogsArchive()
+		c.String(http.StatusOK, strings.Join(logs, "\n"))
 	})
 }

@@ -9,13 +9,12 @@ import (
 	"slices"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/smithy-go"
-
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
-	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/aws/smithy-go"
+
 	"github.com/heka-ai/benchmark-cli/internal/bench"
 	"github.com/heka-ai/benchmark-cli/internal/cloud"
 	"github.com/heka-ai/benchmark-cli/internal/constants"
@@ -25,18 +24,12 @@ import (
 
 var logger = log.GetLogger("aws")
 
-const (
-	instanceProfileName = "benchmark-cli-ec2-instance-profile"
-	roleName            = "benchmark-cli-ec2-role"
-)
-
 type AWSClient struct {
 	cloud.Cloud
 
 	cli     *bench.Client
 	config  *config.Config
 	svc     *ec2.Client
-	iam     *iam.Client
 	wasInit bool
 }
 
@@ -72,7 +65,6 @@ func (c *AWSClient) Init() cloud.Cloud {
 	}
 
 	c.svc = ec2.NewFromConfig(conf)
-	c.iam = iam.NewFromConfig(conf)
 
 	c.wasInit = true
 
@@ -84,9 +76,10 @@ func (c *AWSClient) validateCredentials() error {
 		return errors.New("client not initialized")
 	}
 
+	// Validate permissions by attempting a DryRun of RunInstances only
 	err := c.createInstance(c.config.AWSConfig.CPUInstanceType, true, c.config.AWSConfig.GPU_AMI, []types.Tag{}, "")
 	if err != nil {
-		logger.Error().Msgf("Cannot create an EC2 instance")
+		logger.Error().Err(err).Msg("Cannot perform EC2 RunInstances dry-run")
 		return err
 	}
 
@@ -128,7 +121,7 @@ func (c *AWSClient) deleteInstance(instanceID string, dryRun bool) error {
 }
 
 func (c *AWSClient) createInstance(instanceType string, dryRun bool, ami string, tags []types.Tag, userData string) error {
-	instanceName := fmt.Sprintf("benchmark-%s", c.config.BenchID)
+	instanceName := fmt.Sprintf("benchmark-%s", c.config.BenchmarkID)
 
 	defaultTags := []types.Tag{
 		{
@@ -137,7 +130,7 @@ func (c *AWSClient) createInstance(instanceType string, dryRun bool, ami string,
 		},
 		{
 			Key:   aws.String("bench-id"),
-			Value: aws.String(c.config.BenchID),
+			Value: aws.String(c.config.BenchmarkID),
 		},
 		{
 			Key:   aws.String("Name"),
@@ -148,16 +141,9 @@ func (c *AWSClient) createInstance(instanceType string, dryRun bool, ami string,
 	allTags := slices.Concat(tags, defaultTags)
 	base64UserData := base64.StdEncoding.EncodeToString([]byte(userData))
 
-	logger.Debug().Str("instance-type", instanceType).Str("ami", ami).Str("user-data", base64UserData).Interface("tags", allTags).Msg("Creating the instance")
+	// logger.Debug().Str("instance-type", instanceType).Str("ami", ami).Interface("tags", allTags).Msg("Creating the instance (dry-run)")
 
-	_, err := c.getOrCreateEC2InstanceProfile()
-
-	if err != nil {
-		logger.Error().Err(err).Msg("Error while getting the role for the EC2 instance")
-		return err
-	}
-
-	_, err = c.svc.RunInstances(context.TODO(), &ec2.RunInstancesInput{
+	_, err := c.svc.RunInstances(context.TODO(), &ec2.RunInstancesInput{
 		InstanceType: types.InstanceType(instanceType),
 		ImageId:      aws.String(ami),
 		MinCount:     aws.Int32(1),
@@ -169,9 +155,6 @@ func (c *AWSClient) createInstance(instanceType string, dryRun bool, ami string,
 				ResourceType: types.ResourceTypeInstance,
 				Tags:         allTags,
 			},
-		},
-		IamInstanceProfile: &types.IamInstanceProfileSpecification{
-			Name: aws.String(instanceProfileName),
 		},
 		BlockDeviceMappings: []types.BlockDeviceMapping{
 			{
@@ -194,89 +177,23 @@ func (c *AWSClient) createInstance(instanceType string, dryRun bool, ami string,
 	return nil
 }
 
-func (c *AWSClient) getOrCreateEC2Role() (*string, error) {
-	roleResult, err := c.iam.GetRole(context.TODO(), &iam.GetRoleInput{
-		RoleName: aws.String(roleName),
-	})
-
-	if err == nil {
-		return roleResult.Role.Arn, nil
-	} else {
-		var apiErr smithy.APIError
-		if errors.As(err, &apiErr) && apiErr.ErrorCode() == "409" {
-			return roleResult.Role.Arn, nil
-		}
-	}
-
-	role, err := c.iam.CreateRole(context.TODO(), &iam.CreateRoleInput{
-		RoleName: aws.String(roleName),
-		AssumeRolePolicyDocument: aws.String(`{
-			"Version": "2012-10-17",
-			"Statement": [{"Effect": "Allow", "Principal": {"Service": "ec2.amazonaws.com"}, "Action": "sts:AssumeRole"}]
-		}`),
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = c.iam.AttachRolePolicy(context.TODO(), &iam.AttachRolePolicyInput{
-		RoleName:  role.Role.RoleName,
-		PolicyArn: aws.String("arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"),
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	return role.Role.Arn, nil
-}
-
-func (c *AWSClient) getOrCreateEC2InstanceProfile() (*string, error) {
-	roleResult, err := c.iam.GetInstanceProfile(context.TODO(), &iam.GetInstanceProfileInput{
-		InstanceProfileName: aws.String(instanceProfileName),
-	})
-
-	if err == nil {
-		return roleResult.InstanceProfile.Arn, nil
-	}
-
-	_, err = c.getOrCreateEC2Role()
-
-	if err != nil {
-		return nil, err
-	}
-
-	instanceProfile, err := c.iam.CreateInstanceProfile(context.TODO(), &iam.CreateInstanceProfileInput{
-		InstanceProfileName: aws.String(instanceProfileName),
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = c.iam.AddRoleToInstanceProfile(context.TODO(), &iam.AddRoleToInstanceProfileInput{
-		InstanceProfileName: aws.String(instanceProfileName),
-		RoleName:            aws.String(roleName),
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	return instanceProfile.InstanceProfile.Arn, nil
-}
-
+// The following operations are unchanged for non-validation flows
 func (c *AWSClient) GetBenchmarkInstances() ([]types.Instance, error) {
 	describeInstanceOutput, err := c.svc.DescribeInstances(context.TODO(), &ec2.DescribeInstancesInput{
 		Filters: []types.Filter{
 			{
-				Name:   aws.String(fmt.Sprintf("tag:%s", constants.BenchIDTag)),
-				Values: []string{c.config.BenchID},
+				Name:   aws.String(fmt.Sprintf("tag:%s", constants.BenchmarkIDTag)),
+				Values: []string{c.config.BenchmarkID},
 			},
 			{
-				Name:   aws.String("instance-state-name"),
-				Values: []string{"running"},
+				Name: aws.String("instance-state-name"),
+				Values: []string{
+					"pending",
+					"running",
+					"stopping",
+					"stopped",
+					"shutting-down",
+				},
 			},
 		},
 	})

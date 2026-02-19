@@ -1,5 +1,13 @@
 # Sia Benchmark CLI
 
+## Build cli
+
+```
+sudo apt update
+sudo apt install golang-go -y
+go build -o bench ./cmd/*.go
+```
+
 Run any LLM benchmark with ease on any cloud.
 
 ## Usage
@@ -7,7 +15,7 @@ Run any LLM benchmark with ease on any cloud.
 ```bash
 bench validate # validate the config
 bench creds # check your cloud credentials
-bench create # create the instances on the cloud
+bench create --wait # create the instances on the cloud
 bench connection # check the connection to the instances
 bench deploy # deploy the model on the instance
 bench run # run the benchmark

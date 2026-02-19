@@ -2,15 +2,14 @@ package apiConfig
 
 import (
 	"flag"
-	"fmt"
-	"os"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/go-playground/validator/v10"
-	"github.com/heka-ai/benchmark-api/internal/log"
-	config "github.com/heka-ai/benchmark-cli/pkg/config"
 	"github.com/spf13/viper"
 	"go.uber.org/fx"
+
+	config "github.com/heka-ai/benchmark-cli/pkg/config"
+
+	"github.com/heka-ai/benchmark-api/internal/log"
 )
 
 type APIConfig struct {
@@ -25,14 +24,10 @@ var ConfigFX = fx.Module("config",
 )
 
 func NewAPIConfig() *APIConfig {
-	config := Init()
-	apiConfig := &APIConfig{
-		config: config,
-	}
-
-	apiConfig.WatchConfig()
-
-	return apiConfig
+	cfg := Init()
+	apiCfg := &APIConfig{config: cfg}
+	apiCfg.WatchConfig()
+	return apiCfg
 }
 
 func (c *APIConfig) GetConfig() *config.Config {
@@ -42,10 +37,7 @@ func (c *APIConfig) GetConfig() *config.Config {
 // Init the config and validate it
 func Init() *config.Config {
 	InitFlags()
-
-	config := ReadConfig()
-
-	return config
+	return ReadConfig()
 }
 
 func InitFlags() {
@@ -54,40 +46,19 @@ func InitFlags() {
 }
 
 func ReadConfig() *config.Config {
-	config := &config.Config{}
-	filename := flag.Lookup("config").Value.String()
-
-	viper.SetConfigName(filename)
-	viper.SetConfigType("toml")
-	viper.AddConfigPath(".")
-
-	viper.AutomaticEnv()
-	viper.WatchConfig()
-
-	err := viper.ReadInConfig()
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed to read config file")
-	}
-
-	err = viper.Unmarshal(&config)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed to unmarshal config")
-	}
-
-	validate := validator.New()
-	err = validate.Struct(config)
-	if err != nil {
-		// TODO: improve errors handling
-		for _, err := range err.(validator.ValidationErrors) {
-			logger.Error().Msgf("Failed to validate config, expected %s, got %s (tags: %s)", err.Field(), err.Value(), err.Tag())
-			fmt.Println(err)
+	// Forward --config flag to the shared CLI config loader
+	if f := flag.Lookup("config"); f != nil {
+		filename := f.Value.String()
+		if filename != "" {
+			viper.Set("config", filename)
 		}
-		os.Exit(1)
 	}
 
-	logger.Info().Interface("config", config).Msgf("Config validated successfully")
-
-	return config
+	// Delegate reading & validation to CLI package
+	config.InitConfig()
+	c := config.GetConfig()
+	logger.Info().Interface("config", c).Msgf("Config validated successfully")
+	return &c
 }
 
 func (c *APIConfig) WatchConfig() {

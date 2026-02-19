@@ -1,9 +1,11 @@
 package main
 
 import (
-	cloud_generator "github.com/heka-ai/benchmark-cli/internal/cloud/generator"
-	"github.com/heka-ai/benchmark-cli/pkg/config"
 	"github.com/spf13/cobra"
+
+	cloud_generator "github.com/heka-ai/benchmark-cli/internal/cloud/generator"
+	huggingface "github.com/heka-ai/benchmark-cli/internal/huggingface"
+	"github.com/heka-ai/benchmark-cli/pkg/config"
 )
 
 // validate the cloud credentials, make sure the credentials are correct
@@ -25,9 +27,13 @@ func validate() {
 	c := config.GetConfig()
 
 	cloud := cloud_generator.NewCloud(&c)
-	cloud.ValidateCredentials()
+	if err := cloud.ValidateCredentials(); err != nil {
+		logger.Fatal().Err(err).Msg("Cannot perform EC2 RunInstances dry-run")
+	}
 
-	// todo: validate the huggingface cred
+	if err := huggingface.ValidateHFCredentials(&c); err != nil {
+		logger.Fatal().Err(err).Msg("HuggingFace credentials validation failed")
+	}
 
 	logger.Info().Msg("Credentials validated")
 }

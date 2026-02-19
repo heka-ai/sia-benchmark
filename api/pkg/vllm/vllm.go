@@ -3,19 +3,22 @@ package vllm
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
+	"time"
+
+	"go.uber.org/fx"
+
+	cliConfig "github.com/heka-ai/benchmark-cli/pkg/config"
 
 	apiConfig "github.com/heka-ai/benchmark-api/internal/config"
 	"github.com/heka-ai/benchmark-api/internal/log"
-	cliConfig "github.com/heka-ai/benchmark-cli/pkg/config"
-	"go.uber.org/fx"
 )
 
 var logger = log.GetLogger("vllm")
-
-var PATH_TO_VLLM = "/usr/local/bin/vllm"
 
 var VLLMModule = fx.Module("vllm",
 	fx.Provide(NewVLLM),
@@ -28,17 +31,17 @@ type VLLM struct {
 	waitCh      chan struct{}
 	running     int64
 	logsArchive []string
-	logCh       chan string
 	config      *apiConfig.APIConfig
 }
 
 func NewVLLM(lc fx.Lifecycle, config *apiConfig.APIConfig) *VLLM {
 	vllm := &VLLM{
-		args:    []string{},
-		doneCh:  make(chan struct{}),
-		waitCh:  make(chan struct{}),
-		running: 0,
-		config:  config,
+		args:        []string{},
+		doneCh:      make(chan struct{}),
+		waitCh:      make(chan struct{}),
+		logsArchive: []string{},
+		running:     0,
+		config:      config,
 	}
 
 	lc.Append(fx.StopHook(func(ctx context.Context) error {
@@ -52,11 +55,8 @@ func (v *VLLM) GetLogsArchive() []string {
 	return v.logsArchive
 }
 
-func (v *VLLM) GetLogCh() chan string {
-	return v.logCh
-}
-
 func (v *VLLM) Start(ctx context.Context) error {
+	port := v.config.GetConfig().BenchmarkConfig.EnginePort
 	logger.Info().Str("model", v.config.GetConfig().VLLMConfig.Model).Str("token", v.config.GetConfig().BenchmarkConfig.Token).Msg("Starting the VLLM service")
 
 	localArgs, err := cliConfig.GenerateVLLMCommand(v.config.GetConfig().VLLMConfig)
@@ -64,10 +64,23 @@ func (v *VLLM) Start(ctx context.Context) error {
 		return err
 	}
 
+	// Inject the port flag for vllm serve.
+	localArgs = append(localArgs, "--port", fmt.Sprintf("%d", port))
+
 	logger.Info().Str("command", "vllm "+strings.Join(localArgs, " ")).Msg("Launching VLLM with the following command")
 
-	v.cmd = exec.CommandContext(ctx, PATH_TO_VLLM, localArgs...)
-	v.cmd.Env = append(os.Environ(), "HF_TOKEN="+v.config.GetConfig().BenchmarkConfig.Token)
+	// Resolve the path to the vllm binary to ensure vllm is installed on host machine.
+	logger.Info().Str("PATH", os.Getenv("PATH")).Msg("Environment PATH before resolving vllm")
+	bin, err := resolveVLLMBinary()
+	if err != nil {
+		return err
+	}
+
+	v.cmd = exec.CommandContext(ctx, bin, localArgs...)
+	v.cmd.Env = append(os.Environ(),
+		"HF_TOKEN="+v.config.GetConfig().BenchmarkConfig.Token,
+		"HF_HUB_ENABLE_HF_TRANSFER=1",
+	)
 
 	stdout, err := v.cmd.StdoutPipe()
 	if err != nil {
@@ -83,7 +96,6 @@ func (v *VLLM) Start(ctx context.Context) error {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
 			line := scanner.Text()
-			v.logCh <- line
 			v.logsArchive = append(v.logsArchive, line)
 			logger.Info().Msg(line)
 		}
@@ -93,7 +105,6 @@ func (v *VLLM) Start(ctx context.Context) error {
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
 			line := scanner.Text()
-			v.logCh <- line
 			v.logsArchive = append(v.logsArchive, line)
 			logger.Warn().Msg(line)
 		}
@@ -114,5 +125,41 @@ func (v *VLLM) Start(ctx context.Context) error {
 func (v *VLLM) Stop(ctx context.Context) error {
 	logger.Info().Msg("Stopping VLLM")
 
-	return v.cmd.Process.Kill()
+	// If Start was never called or the process was not created, there is nothing to stop.
+	if v == nil || v.cmd == nil || v.cmd.Process == nil {
+		logger.Error().Msg("VLLM process not started; nothing to stop")
+		return nil
+	}
+
+	// Attempt a graceful shutdown first: send SIGTERM and wait for the process to exit.
+	_ = v.cmd.Process.Signal(syscall.SIGTERM)
+
+	select {
+	case <-v.doneCh:
+		return nil
+	case <-time.After(5 * time.Second):
+		// Force terminate if it did not exit in time.
+		return v.cmd.Process.Kill()
+	}
+}
+
+// resolveVLLMBinary determines the path to the vllm executable.
+func resolveVLLMBinary() (string, error) {
+	if p, err := exec.LookPath("vllm"); err == nil {
+		return p, nil
+	}
+	// Fallback to common installation locations
+	candidates := []string{
+		"/opt/pytorch/bin/vllm",
+		"/usr/local/bin/vllm",
+		"/usr/bin/vllm",
+	}
+	for _, c := range candidates {
+		if st, err := os.Stat(c); err == nil && !st.IsDir() {
+			if st.Mode()&0111 != 0 {
+				return c, nil
+			}
+		}
+	}
+	return "", fmt.Errorf("vllm not installed or not in PATH (PATH=%s)", os.Getenv("PATH"))
 }

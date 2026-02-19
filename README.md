@@ -20,13 +20,36 @@ The CLI is made to run a complete benchmark on any LLM, on most of the popular c
 5. View the results
 6. Destroy the instances
 
+## Initialization (dev mode)
+
+```bash
+mkdir -p ./bin
+go build -o ./bin/bench ./cli/cmd
+```
+
 ## Utilization
 
 Once the CLI is installed you can use the benchmark tool by running the following command :
 
+### Valdiate
+
 ```bash
-bench validate --config <path_to_config_file> # validate the config
-bench creds --config <path_to_config_file> # check your cloud credentials
+bench validate --config <path_to_config_file>
+```
+
+Add `--vllm-command` to display vllm command and `--benchmark-command` to display benchmark command. These flags only print the computed commands; configuration values (model, ports, result filename, etc.) must be defined in `bench.toml` rather than overridden via CLI.
+
+### Creds
+
+Dry run to check if provider credentials are valid AND if your dataset comes from huggingface, it will try to validate your hugginface token (fallback to HF_TOKEN env var).
+
+```bash
+HF_TOKEN:${HF_TOKEN} bench creds --config <path_to_config_file> # check your cloud credentials
+```
+
+Make sure you have at least ec2RunInstances permissions (aws for example).
+
+```bash
 bench create --config <path_to_config_file> # create the instances on the cloud
 bench connection --config <path_to_config_file> # check the connection to the instances
 bench deploy --config <path_to_config_file> # deploy the model on the instance
@@ -68,6 +91,9 @@ We have already built AMIs on AWS, these AMIs are ready to run the benchmark.
 ## Roadmap
 
 - [ ] Publish the AMIs on major AWS Regions
+- [ ] Test with EC2 on the same rack
+- [ ] Local provider
+- [ ] Use inferentia
 - [ ] Integrate the instance building in the CLI
 - [ ] Run benchmarks on Scaleway
 - [ ] Run benchmarks on GCP

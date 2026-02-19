@@ -50,7 +50,7 @@ func (s *HttpServer) createRouter() *gin.Engine {
 	router := gin.Default()
 
 	router.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok", "provider": s.config.GetConfig().Provider, "inference_engine": s.config.GetConfig().InferenceEngine, "bench_id": s.config.GetConfig().BenchID, "model": s.config.GetConfig().VLLMConfig.Model})
+		c.JSON(http.StatusOK, gin.H{"status": "ok", "provider": s.config.GetConfig().Provider, "inference_engine": s.config.GetConfig().InferenceEngine, "bench_id": s.config.GetConfig().BenchmarkID, "model": s.config.GetConfig().VLLMConfig.Model})
 	})
 
 	// generate the vllm routes
