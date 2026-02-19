@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -20,6 +21,15 @@ func ValidateHFCredentials(cfg *config.Config) error {
 	token := ""
 	if cfg != nil && cfg.BenchmarkConfig != nil {
 		token = cfg.BenchmarkConfig.Token
+	}
+	// Fallback to environment variables if token is empty
+	if token == "" {
+		for _, envKey := range []string{"HF_TOKEN", "HUGGINGFACEHUB_API_TOKEN", "HF_API_TOKEN"} {
+			if env := os.Getenv(envKey); strings.TrimSpace(env) != "" {
+				token = env
+				break
+			}
+		}
 	}
 	if token == "" {
 		return errors.New("missing HuggingFace token (benchmark.token or HF_TOKEN or HUGGINGFACEHUB_API_TOKEN or HF_API_TOKEN)")

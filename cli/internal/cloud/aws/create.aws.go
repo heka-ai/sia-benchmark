@@ -35,7 +35,7 @@ cat > /home/ubuntu/config.toml << 'BENCH_EOF'
 BENCH_EOF
 sudo systemctl daemon-reload
 sudo systemctl restart api
-		`, c.config.APIKey, c.config.BenchmarkConfig.Token, configString)
+		`, c.config.GeneralConfig.APIKey, c.config.BenchmarkConfig.Token, configString)
 
 	// Optional networking from config
 	subnetID := viper.GetString("aws.subnet_id")
@@ -46,8 +46,8 @@ sudo systemctl restart api
 		return []types.Tag{
 			{Key: aws.String(constants.BenchInstanceLabelKey), Value: aws.String(machineType)},
 			{Key: aws.String("managed-by"), Value: aws.String("benchmark-cli")},
-			{Key: aws.String(constants.BenchmarkIDTag), Value: aws.String(c.config.BenchmarkID)},
-			{Key: aws.String("Name"), Value: aws.String(fmt.Sprintf("benchmark-%s", c.config.BenchmarkID))},
+			{Key: aws.String(constants.BenchmarkIDTag), Value: aws.String(c.config.GeneralConfig.BenchmarkID)},
+			{Key: aws.String("Name"), Value: aws.String(fmt.Sprintf("benchmark-%s", c.config.GeneralConfig.BenchmarkID))},
 		}
 	}
 

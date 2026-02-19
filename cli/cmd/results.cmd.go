@@ -38,7 +38,7 @@ func ResultsCmd() *cobra.Command {
 func results(file string) {
 	config.Init()
 	config := config.GetConfig()
-	client := bench.NewClient(config.APIKey)
+	client := bench.NewClient(config.GeneralConfig.APIKey)
 
 	cloud := cloud_generator.NewCloud(&config)
 
@@ -47,7 +47,7 @@ func results(file string) {
 		logger.Fatal().Err(err).Msg("Cannot get the bench instance IP")
 	}
 
-	results, err := client.GetResults(benchInstanceIP, config.InferenceEngine)
+	results, err := client.GetResults(benchInstanceIP, config.GeneralConfig.InferenceEngine)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Cannot get the results")
 	}

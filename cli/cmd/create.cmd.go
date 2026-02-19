@@ -38,7 +38,7 @@ func create(wait bool) {
 
 	if wait {
 		logger.Info().Msg("Waiting for the instances to be ready")
-		bench := bench.NewClient(c.APIKey)
+		bench := bench.NewClient(c.GeneralConfig.APIKey)
 
 		benchIP, err := cloud.GetBenchInstanceIP()
 		if err != nil {

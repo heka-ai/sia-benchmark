@@ -72,7 +72,7 @@ func logs(isLLM, isBenchmark, follow bool, interval time.Duration) {
 	c := config.GetConfig()
 
 	cloud := cloud_generator.NewCloud(&c)
-	client := bench.NewClient(c.APIKey)
+	client := bench.NewClient(c.GeneralConfig.APIKey)
 
 	var instanceIP string
 	var instanceType string

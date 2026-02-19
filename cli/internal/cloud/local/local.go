@@ -34,7 +34,7 @@ type LocalClient struct {
 
 func NewClient(cfg *config.Config) *LocalClient {
 	return &LocalClient{
-		cli:     bench.NewClient(cfg.APIKey),
+		cli:     bench.NewClient(cfg.GeneralConfig.APIKey),
 		config:  cfg,
 		wasInit: false,
 	}

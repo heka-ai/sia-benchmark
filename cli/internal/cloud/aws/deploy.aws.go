@@ -24,7 +24,7 @@ func (c *AWSClient) Deploy() error {
 			logger.Fatal().Msg("Instance has no public IP address")
 		}
 
-		err := c.cli.Deploy(*instance.PublicIpAddress, c.config.InferenceEngine, 8000)
+		err := c.cli.Deploy(*instance.PublicIpAddress, c.config.GeneralConfig.InferenceEngine, 8000)
 		logger.Info().Str("ip", *instance.PublicIpAddress).Msg("Deployment started")
 
 		if err != nil {

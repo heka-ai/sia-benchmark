@@ -12,15 +12,20 @@ import (
 )
 
 type Config struct {
-	BenchmarkID     string           `mapstructure:"benchmark_id" validate:"required"`
-	Provider        string           `mapstructure:"provider" validate:"required,oneof=aws gcp scaleway local"`
-	InferenceEngine string           `mapstructure:"inference_engine" validate:"required,oneof=vllm"`
-	AWSConfig       *AWSConfig       `mapstructure:"aws" validate:"required_if=Provider aws"`
-	LocalConfig     *LocalConfig     `mapstructure:"local" validate:"required_if=Provider local"`
-	VLLMConfig      *VLLMConfig      `mapstructure:"vllm" validate:"required_if=InferenceEngine vllm"`
+	GeneralConfig   *GeneralConfig   `mapstructure:"general" validate:"required"`
+	AWSConfig       *AWSConfig       `mapstructure:"aws"`
+	LocalConfig     *LocalConfig     `mapstructure:"local"`
+	VLLMConfig      *VLLMConfig      `mapstructure:"vllm"`
 	InstanceConfig  *InstanceConfig  `mapstructure:"instance"`
 	BenchmarkConfig *BenchmarkConfig `mapstructure:"benchmark" validate:"required"`
-	APIKey          string           `mapstructure:"api_key" validate:"required_unless=Provider local"`
+}
+
+type GeneralConfig struct {
+	BenchmarkID     string `mapstructure:"benchmark_id" validate:"required"`
+	BenchmarkName   string `mapstructure:"benchmark_name"`
+	Provider        string `mapstructure:"provider" validate:"required,oneof=aws gcp scaleway local"`
+	InferenceEngine string `mapstructure:"inference_engine" validate:"required,oneof=vllm"`
+	APIKey          string `mapstructure:"api_key" validate:"required_unless=Provider local"`
 }
 
 type BenchmarkConfig struct {
@@ -245,7 +250,7 @@ func GenerateBenchmarkCommand(conf *Config, ip string, port int) ([]string, erro
 	// Compute effective backend: fallback to top-level InferenceEngine when unset
 	effectiveBackend := strings.TrimSpace(conf.BenchmarkConfig.Backend)
 	if effectiveBackend == "" {
-		effectiveBackend = strings.TrimSpace(conf.InferenceEngine)
+		effectiveBackend = strings.TrimSpace(conf.GeneralConfig.InferenceEngine)
 	}
 
 	localArgs := []string{script, "--backend", effectiveBackend, "--base-url", fmt.Sprintf("http://%s:%d", ip, port)}

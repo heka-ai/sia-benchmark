@@ -38,7 +38,7 @@ func RunExec() {
 	config.Init()
 	c := config.GetConfig()
 
-	client := bench.NewClient(c.APIKey)
+	client := bench.NewClient(c.GeneralConfig.APIKey)
 	cloud := cloud_generator.NewCloud(&c)
 
 	benchInstanceIP, err := cloud.GetBenchInstanceIP()
@@ -59,7 +59,7 @@ func RunExec() {
 	}
 	wait := viper.GetBool("wait")
 
-	err = client.RunBenchmark(benchInstanceIP, llmInstanceIP, c.InferenceEngine, port, result)
+	err = client.RunBenchmark(benchInstanceIP, llmInstanceIP, c.GeneralConfig.InferenceEngine, port, result)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Cannot run benchmark on bench instance")
 	}
