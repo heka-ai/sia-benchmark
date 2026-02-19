@@ -1,21 +1,37 @@
 package main
 
 import (
+	"strings"
+	"time"
+
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
 	bench "github.com/heka-ai/benchmark-cli/internal/bench"
 	cloud_generator "github.com/heka-ai/benchmark-cli/internal/cloud/generator"
 	"github.com/heka-ai/benchmark-cli/pkg/config"
-	"github.com/spf13/cobra"
 )
 
 // sends the command to run the benchmark
 func BenchCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "run",
 		Short: "Run the benchmark",
 		Run: func(cmd *cobra.Command, args []string) {
 			RunExec()
 		},
 	}
+
+	cmd.Flags().Bool("wait", true, "Stream benchmark logs until completion")
+
+	// Bind wait flag to Viper for global access
+	_ = viper.BindPFlag("wait", cmd.Flags().Lookup("wait"))
+
+	// Ensure env like WAIT works (optional)
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+	viper.AutomaticEnv()
+
+	return cmd
 }
 
 func RunExec() {
@@ -35,13 +51,21 @@ func RunExec() {
 		logger.Fatal().Err(err).Msg("Cannot get the LLM instance IP")
 	}
 
-	err = client.RunBenchmark(benchInstanceIP, llmInstanceIP, c.InferenceEngine)
+	// Read values from config instead of flags/Viper
+	port := c.BenchmarkConfig.EnginePort
+	result := c.BenchmarkConfig.ResultFilename
+	if strings.TrimSpace(result) == "" {
+		result = "./metrics.json"
+	}
+	wait := viper.GetBool("wait")
+
+	err = client.RunBenchmark(benchInstanceIP, llmInstanceIP, c.InferenceEngine, port, result)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Cannot run benchmark on bench instance")
 	}
 
-	// todo: add a flag to wait for the benchmark to finish
-	// todo: show the progress
-
 	logger.Info().Msg("Benchmark started on the bench instance")
+	if wait {
+		_ = client.FollowBenchLogs(benchInstanceIP, "bench", 1*time.Second, 5*time.Minute, true)
+	}
 }

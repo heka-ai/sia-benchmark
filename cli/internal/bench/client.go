@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	log "github.com/heka-ai/benchmark-cli/internal/logs"
@@ -57,9 +58,9 @@ func (c *Client) WaitForInstances(benchIP, llmIP string) error {
 
 // deploy the model on the instance
 // will also upload the config to the instance
-func (c *Client) Deploy(ip string, engine string) error {
+func (c *Client) Deploy(ip string, engine string, port int) error {
 	// config to string
-	request, err := http.NewRequest("GET", fmt.Sprintf("http://%s:8001/%s/start", ip, engine), nil)
+	request, err := http.NewRequest("GET", fmt.Sprintf("http://%s:8001/%s/start?port=%d", ip, engine, port), nil)
 	if err != nil {
 		return err
 	}
@@ -74,7 +75,13 @@ func (c *Client) Deploy(ip string, engine string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to deploy: %s", resp.Status)
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyStr := strings.TrimSpace(string(bodyBytes))
+		if len(bodyStr) > 4096 {
+			bodyStr = bodyStr[:4096] + "...(truncated)"
+		}
+		logger.Error().Int("status_code", resp.StatusCode).Str("status", resp.Status).Str("body", bodyStr).Msg("Deploy request failed")
+		return fmt.Errorf("failed to deploy: %s - %s", resp.Status, bodyStr)
 	}
 
 	return nil
@@ -102,11 +109,11 @@ func (c *Client) HealthCheck(ip string) error {
 	return nil
 }
 
-func (c *Client) WaitForLLM(ip string) error {
+func (c *Client) WaitForLLM(ip string, port int) error {
 	done := false
 
 	for i := 0; i < maxIterations && !done; i++ {
-		done, _ := c.ModelStatus(ip)
+		done, _ := c.ModelStatus(ip, port)
 
 		if done {
 			return nil
@@ -118,8 +125,8 @@ func (c *Client) WaitForLLM(ip string) error {
 	return fmt.Errorf("LLM is not ready after %d iterations", maxIterations)
 }
 
-func (c *Client) ModelStatus(ip string) (bool, error) {
-	res, err := http.Get(fmt.Sprintf("http://%s:8000/v1/models", ip))
+func (c *Client) ModelStatus(ip string, port int) (bool, error) {
+	res, err := http.Get(fmt.Sprintf("http://%s:%d/v1/models", ip, port))
 	if err != nil {
 		return false, err
 	}
@@ -146,15 +153,18 @@ func (c *Client) ModelStatus(ip string) (bool, error) {
 	return false, nil
 }
 
-func (c *Client) RunBenchmark(ip string, llmIp string, engineType string) error {
+func (c *Client) RunBenchmark(ip string, llmIp string, engineType string, vllmPort int, resultFilename string) error {
 	request, err := http.NewRequest("POST", fmt.Sprintf("http://%s:8001/bench/%s/start", ip, engineType), nil)
 	if err != nil {
 		return err
 	}
 
-	body, err := json.Marshal(map[string]string{
-		"ip": llmIp,
-	})
+	payload := map[string]interface{}{
+		"ip":              llmIp,
+		"port":            vllmPort,
+		"result_filename": resultFilename,
+	}
+	body, err := json.Marshal(payload)
 
 	if err != nil {
 		return err
@@ -171,7 +181,13 @@ func (c *Client) RunBenchmark(ip string, llmIp string, engineType string) error 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to run benchmark: %s", resp.Status)
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyStr := strings.TrimSpace(string(bodyBytes))
+		if len(bodyStr) > 4096 {
+			bodyStr = bodyStr[:4096] + "...(truncated)"
+		}
+		logger.Error().Int("status_code", resp.StatusCode).Str("status", resp.Status).Str("body", bodyStr).Msg("Run benchmark request failed")
+		return fmt.Errorf("failed to run benchmark: %s - %s", resp.Status, bodyStr)
 	}
 
 	return nil
@@ -210,4 +226,75 @@ func (c *Client) GetResults(ip string, engineType string) (*results.Results, err
 	}
 
 	return &results, nil
+}
+
+func (c *Client) GetLogs(ip string, logsType string) (string, error) {
+	var endpoint string
+
+	// Map logsType to the correct API endpoint
+	switch logsType {
+	case "llm", "vllm":
+		endpoint = fmt.Sprintf("http://%s:8001/vllm/logs", ip)
+	case "bench", "benchmark":
+		endpoint = fmt.Sprintf("http://%s:8001/bench/vllm/logs", ip)
+	default:
+		// For backward compatibility, try the old endpoint
+		endpoint = fmt.Sprintf("http://%s:8001/logs/%s", ip, logsType)
+	}
+
+	request, err := http.NewRequest("GET", endpoint, nil)
+	if err != nil {
+		return "", err
+	}
+
+	request.Header.Add("X-API-Key", c.APIKey)
+
+	resp, err := c.httpClient.Do(request)
+	if err != nil {
+		return "", err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("failed to get logs: %s", resp.Status)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	return string(body), nil
+}
+
+func (c *Client) FollowBenchLogs(ip string, engineType string, interval time.Duration, timeout time.Duration, print bool) error {
+	last := ""
+	lastActivity := time.Now()
+
+	for {
+		logs, err := c.GetLogs(ip, engineType)
+		if err != nil {
+			return err
+		}
+
+		// Check if we received new logs
+		if logs != last {
+			if print {
+				logger.Info().Msg(logs)
+			}
+			last = logs
+			lastActivity = time.Now() // Reset the timeout when we get new logs
+		}
+
+		// Check if we've been idle for too long
+		if time.Since(lastActivity) > timeout {
+			if print {
+				logger.Warn().Dur("timeout", timeout).Msg("No new logs received for the configured timeout; stopping")
+			}
+			return nil
+		}
+
+		time.Sleep(interval)
+	}
 }

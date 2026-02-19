@@ -423,3 +423,4 @@ ASYNC_REQUEST_FUNCS = {
     "scalellm": async_request_openai_completions,
     "sglang": async_request_openai_completions,
 }
+

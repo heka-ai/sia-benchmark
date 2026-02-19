@@ -188,13 +188,17 @@ launch_instance() {
 wait_for_ssh_access() {
     echo "Waiting for SSH to be available..."
     for i in {1..20}; do
-        if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 \
-        -i "/tmp/${KEY_NAME}.pem" "${AWS_USER}"@"${INSTANCE_IP}" exit 2>/dev/null; then
+        if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 -o IdentitiesOnly=yes \
+        -i "/tmp/${KEY_NAME}.pem" "${AWS_USER}"@"${INSTANCE_IP}" exit >/dev/null 2>&1; then
             echo "SSH connection established"
             break
         fi
         echo "Attempt $i of 20: SSH connection failed, retrying after 30 seconds..."
-        if [ $i -eq 30 ]; then
+        # Capture and display SSH error output for troubleshooting
+        ssh_error_output=$(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 -o IdentitiesOnly=yes \
+        -i "/tmp/${KEY_NAME}.pem" "${AWS_USER}"@"${INSTANCE_IP}" exit 2>&1 || true)
+        echo "$ssh_error_output"
+        if [ $i -eq 20 ]; then
             echo "Timeout waiting for SSH access"
             exit 1
         fi
@@ -206,15 +210,24 @@ wait_for_ssh_access() {
 install_requirements() {
     local install_script=$1
 
-    scp -o StrictHostKeyChecking=no -i "/tmp/${KEY_NAME}.pem" -r \
+    # Rebuild the API binary
+    mkdir -p ../../bin && cd ../../api && go build -o ../bin/api ./cmd
+    cd ../instance-builder/aws
+
+        # Copy the API binary to the instance
+    scp -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -i "/tmp/${KEY_NAME}.pem" -r \
+        "../../bin/api" "${AWS_USER}@${INSTANCE_IP}:/home/ubuntu/api"
+
+    scp -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -i "/tmp/${KEY_NAME}.pem" -r \
         "ec2/" "${AWS_USER}@${INSTANCE_IP}:/home/ubuntu/"
 
-    echo "Installing the API"
-    ssh -o StrictHostKeyChecking=no -i "/tmp/${KEY_NAME}.pem" "${AWS_USER}@${INSTANCE_IP}" \
+
+    echo "Installing requirements"
+    ssh -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -i "/tmp/${KEY_NAME}.pem" "${AWS_USER}@${INSTANCE_IP}" \
         "cd /home/ubuntu/ec2/api && chmod +x install.sh && ./install.sh"
     
     echo "Installing the $INSTALL_TYPE requirements"
-    ssh -o StrictHostKeyChecking=no -i "/tmp/${KEY_NAME}.pem" "${AWS_USER}@${INSTANCE_IP}" \
+    ssh -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -i "/tmp/${KEY_NAME}.pem" "${AWS_USER}@${INSTANCE_IP}" \
         "chmod +x /home/ubuntu/ec2/$INSTALL_TYPE/install.sh && cd /home/ubuntu/ec2/$INSTALL_TYPE && sudo ./install.sh"
 
     if [ $? -ne 0 ]; then
@@ -230,13 +243,13 @@ setup_api_service() {
     # Verify service status
     sleep 10 && echo "Checking service status..."
 
-    ssh -o StrictHostKeyChecking=no -i "/tmp/${KEY_NAME}.pem" "${AWS_USER}@${INSTANCE_IP}" \
+    ssh -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -i "/tmp/${KEY_NAME}.pem" "${AWS_USER}@${INSTANCE_IP}" \
         "sudo systemctl status api.service && \
         sudo journalctl -u api.service --no-pager -n 50"
 
     # Verify API service is running
     echo "Verifying API service is running..."
-    ssh -o StrictHostKeyChecking=no -i "/tmp/${KEY_NAME}.pem" "${AWS_USER}@${INSTANCE_IP}" \
+    ssh -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -i "/tmp/${KEY_NAME}.pem" "${AWS_USER}@${INSTANCE_IP}" \
         "curl -X GET http://localhost:8001/health"
 
     echo "API service setup complete"
@@ -274,12 +287,16 @@ launch_test_instance() {
     # Wait for SSH to be available
     echo "Waiting for SSH to be available on test instance..."
     for i in {1..20}; do
-        if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 \
-        -i "/tmp/${KEY_NAME}.pem" "${AWS_USER}"@"${TEST_INSTANCE_IP}" exit 2>/dev/null; then
+        if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 -o IdentitiesOnly=yes \
+        -i "/tmp/${KEY_NAME}.pem" "${AWS_USER}"@"${TEST_INSTANCE_IP}" exit >/dev/null 2>&1; then
             echo "SSH connection established to test instance"
             break
         fi
         echo "Attempt $i of 20: SSH connection failed, retrying after 15 seconds..."
+        # Capture and display SSH error output for troubleshooting
+        ssh_error_output=$(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 -o IdentitiesOnly=yes \
+        -i "/tmp/${KEY_NAME}.pem" "${AWS_USER}"@"${TEST_INSTANCE_IP}" exit 2>&1 || true)
+        echo "$ssh_error_output"
         if [ $i -eq 20 ]; then
             echo "Timeout waiting for SSH access to test instance"
             terminate_test_instance
@@ -290,7 +307,7 @@ launch_test_instance() {
     
     # Test API health endpoint
     echo "Testing API health endpoint..."
-    if ! ssh -o StrictHostKeyChecking=no -i "/tmp/${KEY_NAME}.pem" "${AWS_USER}"@"${TEST_INSTANCE_IP}" \
+    if ! ssh -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -i "/tmp/${KEY_NAME}.pem" "${AWS_USER}"@"${TEST_INSTANCE_IP}" \
         "curl -s -f -X GET http://localhost:8001/health"; then
         # Terminate the test instance
         terminate_test_instance
@@ -384,16 +401,16 @@ launch_and_create_ami() {
     fi
 
     echo "Creating $ami_type AMI..."
-    
+
     # Launch instance
     launch_instance "$instance_type" "$ami_type"
-    
+
     # Install requirements
     install_requirements "$install_script"
-    
+
     # Setup API service
     setup_api_service
-    
+
     # Create AMI
     create_ami "$ami_type"
 }
