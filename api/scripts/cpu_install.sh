@@ -2,8 +2,8 @@
 
 echo "Installing system dependencies"
 
-# Install system dependencies
-apt-get update && apt-get install -y \
+# Install system dependencies (API runs as ubuntu, so use sudo)
+sudo apt-get update && sudo apt-get install -y \
     git \
     curl \
     jq \

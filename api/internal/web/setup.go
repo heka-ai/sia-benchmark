@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/heka-ai/benchmark-api/scripts"
 )
 
@@ -80,23 +81,25 @@ func (s *HttpServer) generateSetupRouter(router *gin.Engine) {
 		}()
 		go func() { wg.Wait(); close(lines) }()
 
-		c.Header("Content-Type", "text/plain; charset=utf-8")
-		flusher, _ := c.Writer.(http.Flusher)
+		var body []string
 		for line := range lines {
-			c.Writer.Write([]byte(line + "\n"))
-			if flusher != nil {
-				flusher.Flush()
-			}
+			body = append(body, line)
 		}
 
 		if err := cmd.Wait(); err != nil {
-			c.Writer.Write([]byte("error: " + err.Error() + "\n"))
-			if flusher != nil {
-				flusher.Flush()
-			}
+			body = append(body, "error: "+err.Error())
+			c.Header("Content-Type", "text/plain; charset=utf-8")
 			c.Status(http.StatusInternalServerError)
+			for _, line := range body {
+				c.Writer.Write([]byte(line + "\n"))
+			}
 			return
 		}
+
+		c.Header("Content-Type", "text/plain; charset=utf-8")
 		c.Status(http.StatusOK)
+		for _, line := range body {
+			c.Writer.Write([]byte(line + "\n"))
+		}
 	})
 }

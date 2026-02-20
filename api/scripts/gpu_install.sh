@@ -10,8 +10,8 @@ info() { echo "[$SECTION] $*"; }
 info "--------------------------------------------------"
 info "Installing system dependencies"
 info "--------------------------------------------------"
-apt-get update -y
-apt-get install -y git curl jq openssh-client
+sudo apt-get update -y
+sudo apt-get install -y git curl jq openssh-client
 
 info "--------------------------------------------------"
 info "Installing uv for user 'ubuntu'"
