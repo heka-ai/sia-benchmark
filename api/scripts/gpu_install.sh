@@ -31,7 +31,11 @@ sudo -u ubuntu bash -c '
   uv python pin 3.12
   uv venv
 
-  uv pip install "tqdm>=4.65,<4.66" vllm==0.10.2 --torch-backend=auto --index-strategy unsafe-best-match
+  # vLLM 0.10.2 passes DisabledTqdm to snapshot_download; huggingface_hub>=1.1 calls tqdm_class(..., disable=...),
+  # causing "multiple values for keyword argument 'disable'" when DisabledTqdm does super(..., disable=True).
+  # Pin huggingface_hub to <1.1 to use the pre-bytes_progress code path that does not pass disable= to tqdm_class.
+  # TODO : Upgrade vllm. HF<1.1 is too slow for snapshot_download.
+  uv pip install "huggingface_hub>=0.20,<1.1" vllm==0.10.2 --torch-backend=auto --index-strategy unsafe-best-match
 
   echo "--------------------------------------------------"
   echo "vLLM and dependencies installed successfully"
