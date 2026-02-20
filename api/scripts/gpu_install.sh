@@ -31,15 +31,14 @@ sudo -u ubuntu bash -c '
   uv python pin 3.12
   uv venv
 
-  uv pip install vllm==0.10.2 --torch-backend=auto --index-strategy unsafe-best-match
-  uv run python3 -c "import vllm; print(\"vLLM version:\", vllm.__version__)"
+  uv pip install "tqdm>=4.65,<4.66" vllm==0.10.2 --torch-backend=auto --index-strategy unsafe-best-match
 
   echo "--------------------------------------------------"
   echo "vLLM and dependencies installed successfully"
   echo "Testing vLLM CLI via uv"
   echo "--------------------------------------------------"
 
-  uv run vllm serve --help
+  uv run vllm --version
 '
 
 info "--------------------------------------------------"
