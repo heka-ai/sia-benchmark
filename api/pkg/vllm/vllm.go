@@ -64,6 +64,20 @@ func (v *VLLM) Start(ctx context.Context) error {
 		hfToken = strings.TrimSpace(os.Getenv("HF_TOKEN"))
 	}
 	if hfToken == "" {
+		home := os.Getenv("HOME")
+		if home == "" {
+			home = "/home/ubuntu"
+		}
+		if b, _ := os.ReadFile(home + "/.benchrc"); b != nil {
+			for _, line := range strings.Split(string(b), "\n") {
+				if s := strings.TrimSpace(line); strings.HasPrefix(s, "HF_TOKEN=") {
+					hfToken = strings.TrimSpace(s[9:])
+					break
+				}
+			}
+		}
+	}
+	if hfToken == "" {
 		logger.Warn().Msg("Hugging Face token is empty; set benchmark.token or HF_TOKEN before deploy for gated/private models")
 	}
 
