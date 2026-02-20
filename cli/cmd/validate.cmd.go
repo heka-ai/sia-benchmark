@@ -76,14 +76,7 @@ func ValidateExec(vllmModel bool, benchmarkModel bool, excludedSections []string
 			return
 		}
 
-		token := ""
-		if cfg.BenchmarkConfig != nil {
-			token = cfg.BenchmarkConfig.Token
-		}
-		if token == "" {
-			token = "${HF_TOKEN}"
-		}
-		logger.Info().Msg("VLLM command generated for your config:\n" + formatCmd("HF_TOKEN="+token+" vllm", localArgs))
+		logger.Info().Msg("VLLM command generated for your config:\n" + formatCmd("uv run vllm", localArgs))
 	}
 
 	if benchmarkModel {

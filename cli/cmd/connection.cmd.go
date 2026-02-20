@@ -1,10 +1,11 @@
 package main
 
 import (
+	"github.com/spf13/cobra"
+
 	bench "github.com/heka-ai/benchmark-cli/internal/bench"
 	cloud_generator "github.com/heka-ai/benchmark-cli/internal/cloud/generator"
 	"github.com/heka-ai/benchmark-cli/pkg/config"
-	"github.com/spf13/cobra"
 )
 
 func ConnectionCmd() *cobra.Command {
@@ -20,7 +21,7 @@ func ConnectionCmd() *cobra.Command {
 // test the connection to the two instances
 func connect() {
 	logger.Info().Msg("Trying to connect to the instances")
-	config.Init()
+	config.InitInfra()
 	c := config.GetConfig()
 
 	cloud := cloud_generator.NewCloud(&c)
@@ -35,6 +36,9 @@ func connect() {
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Cannot get the bench instance IP")
 	}
+
+	logger.Info().Str("ip", llmInstanceIP).Msg("LLM instance IP")
+	logger.Info().Str("ip", benchInstanceIP).Msg("Bench instance IP")
 
 	err = client.HealthCheck(llmInstanceIP)
 	if err != nil {

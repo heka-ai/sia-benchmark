@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
@@ -26,7 +27,16 @@ func (c *AWSClient) Create() error {
 		return err
 	}
 
-	// set the basic benchmark config env var
+	hfToken := ""
+	if c.config.BenchmarkConfig != nil && strings.TrimSpace(c.config.BenchmarkConfig.Token) != "" {
+		hfToken = strings.TrimSpace(c.config.BenchmarkConfig.Token)
+	} else if envToken := strings.TrimSpace(os.Getenv("HF_TOKEN")); envToken != "" {
+		hfToken = envToken
+	} else {
+		logger.Warn().Msg("No Hugging Face token found in config [benchmark].token or HF_TOKEN env var; set HF_TOKEN before deploy phase")
+	}
+
+	// set instance env vars and config
 	userData := fmt.Sprintf(`#!/bin/bash
 echo "API_KEY=%s" > /home/ubuntu/.bashrc
 echo "HF_TOKEN=%s" >> /home/ubuntu/.bashrc
@@ -35,7 +45,7 @@ cat > /home/ubuntu/config.toml << 'BENCH_EOF'
 BENCH_EOF
 sudo systemctl daemon-reload
 sudo systemctl restart api
-		`, c.config.GeneralConfig.APIKey, c.config.BenchmarkConfig.Token, configString)
+		`, c.config.GeneralConfig.APIKey, hfToken, configString)
 
 	// Optional networking from config
 	subnetID := viper.GetString("aws.subnet_id")

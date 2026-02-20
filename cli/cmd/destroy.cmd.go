@@ -20,7 +20,7 @@ func DestroyCmd() *cobra.Command {
 
 func DestroyCmdExec() {
 	logger.Info().Msg("Destroying the instance")
-	config.Init()
+	config.InitInfra()
 	c := config.GetConfig()
 
 	cloud := cloud_generator.NewCloud(&c)

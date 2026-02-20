@@ -29,7 +29,7 @@ func InstanceCmd() *cobra.Command {
 
 func create(wait bool) {
 	logger.Info().Msg("Creating the instances to run the benchmark")
-	config.Init()
+	config.InitInfra()
 
 	c := config.GetConfig()
 

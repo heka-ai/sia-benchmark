@@ -16,7 +16,6 @@ type Config struct {
 	AWSConfig       *AWSConfig       `mapstructure:"aws"`
 	LocalConfig     *LocalConfig     `mapstructure:"local"`
 	VLLMConfig      *VLLMConfig      `mapstructure:"vllm"`
-	InstanceConfig  *InstanceConfig  `mapstructure:"instance"`
 	BenchmarkConfig *BenchmarkConfig `mapstructure:"benchmark" validate:"required"`
 }
 
@@ -181,12 +180,6 @@ type LocalConfig struct {
 	GPUInstanceType string `mapstructure:"gpu_instance_type" validate:"required"`
 }
 
-type InstanceConfig struct {
-	Test        *string `mapstructure:"test"`
-	HealthCheck *string `mapstructure:"health_check"`
-	SecondTest  *int    `mapstructure:"second_test"`
-}
-
 func GenerateVLLMCommand(vllmConfig *VLLMConfig) ([]string, error) {
 	localArgs := []string{"serve", vllmConfig.Model}
 
@@ -231,12 +224,13 @@ func GenerateVLLMCommand(vllmConfig *VLLMConfig) ([]string, error) {
 		logger.Warn().Str("key", k).Interface("value", v).Msg("Unknown type")
 	}
 
-	// Append engine port from benchmark config so vLLM serves on the configured port
-	// Assumptions per project rules: BenchmarkConfig is non-nil, EnginePort > 0 when set
-	enginePort := GetConfig().BenchmarkConfig.EnginePort
-	if enginePort > 0 {
-		localArgs = append(localArgs, "--port", strconv.Itoa(enginePort))
+	// Use benchmark engine_port when available; otherwise default to 8000.
+	enginePort := 8000
+	cfg := GetConfig()
+	if cfg.BenchmarkConfig != nil && cfg.BenchmarkConfig.EnginePort > 0 {
+		enginePort = cfg.BenchmarkConfig.EnginePort
 	}
+	localArgs = append(localArgs, "--port", strconv.Itoa(enginePort))
 
 	return localArgs, nil
 }
