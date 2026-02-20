@@ -65,7 +65,7 @@ echo "=== Installing Go ==="
 curl -fsSL https://go.dev/dl/go1.24.7.linux-amd64.tar.gz | tar -C /usr/local -xz
 
 echo "=== Cloning repo ==="
-sudo -u ubuntu git clone https://github.com/heka-ai/sia-benchmark.git /home/ubuntu/sia-benchmark
+sudo -u ubuntu git clone -b refactor/instance-builder https://github.com/heka-ai/sia-benchmark.git /home/ubuntu/sia-benchmark
 
 echo "=== Building API binary ==="
 sudo -u ubuntu bash -c 'export PATH=/usr/local/go/bin:$PATH && cd /home/ubuntu/sia-benchmark && go build -o /home/ubuntu/api ./api/cmd'

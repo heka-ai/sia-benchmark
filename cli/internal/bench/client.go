@@ -1,7 +1,9 @@
 package bench
 
 import (
+	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -31,9 +33,15 @@ func NewClient(apiKey string) *Client {
 }
 
 const (
-	waitInterval  = 1 * time.Second
-	maxIterations = 100
+	waitInterval     = 1 * time.Second
+	maxIterations    = 100
+	setupHTTPTimeout = 30 * time.Minute
 )
+
+func (c *Client) do(req *http.Request) (*http.Response, error) {
+	req.Header.Add("X-API-Key", c.APIKey)
+	return c.httpClient.Do(req)
+}
 
 func (c *Client) WaitForInstances(benchIP, llmIP string) error {
 	if benchIP == "" && llmIP == "" {
@@ -65,15 +73,11 @@ func (c *Client) WaitForInstances(benchIP, llmIP string) error {
 // deploy the model on the instance
 // will also upload the config to the instance
 func (c *Client) Deploy(ip string, engine string, port int) error {
-	// config to string
 	request, err := http.NewRequest("GET", fmt.Sprintf("http://%s:8001/%s/start?port=%d", ip, engine, port), nil)
 	if err != nil {
 		return err
 	}
-
-	request.Header.Add("X-API-Key", c.APIKey)
-
-	resp, err := c.httpClient.Do(request)
+	resp, err := c.do(request)
 	if err != nil {
 		return err
 	}
@@ -94,26 +98,26 @@ func (c *Client) Deploy(ip string, engine string, port int) error {
 }
 
 func (c *Client) SetupInstance(ip string, setupType string) error {
-	request, err := http.NewRequest("POST", fmt.Sprintf("http://%s:8001/setup?type=%s", ip, setupType), nil)
+	ctx, cancel := context.WithTimeout(context.Background(), setupHTTPTimeout)
+	defer cancel()
+	request, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("http://%s:8001/setup?type=%s", ip, setupType), nil)
 	if err != nil {
 		return err
 	}
-
-	request.Header.Add("X-API-Key", c.APIKey)
-
-	c.httpClient.Timeout = 30 * time.Minute
-	resp, err := c.httpClient.Do(request)
+	resp, err := c.do(request)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		bodyStr := strings.TrimSpace(string(bodyBytes))
-		return fmt.Errorf("setup failed (%s): %s", resp.Status, bodyStr)
+	scanner := bufio.NewScanner(resp.Body)
+	for scanner.Scan() {
+		logger.Info().Str("setup", setupType).Msg(scanner.Text())
 	}
 
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("setup failed (%s)", resp.Status)
+	}
 	return nil
 }
 
@@ -122,10 +126,7 @@ func (c *Client) HealthCheck(ip string) error {
 	if err != nil {
 		return err
 	}
-
-	request.Header.Add("X-API-Key", c.APIKey)
-
-	resp, err := c.httpClient.Do(request)
+	resp, err := c.do(request)
 	if err != nil {
 		return err
 	}
@@ -200,14 +201,11 @@ func (c *Client) RunBenchmark(ip string, llmIp string, engineType string, vllmPo
 		return err
 	}
 
-	request.Header.Add("X-API-Key", c.APIKey)
 	request.Body = io.NopCloser(bytes.NewBuffer(body))
-
-	resp, err := c.httpClient.Do(request)
+	resp, err := c.do(request)
 	if err != nil {
 		return err
 	}
-
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
@@ -219,7 +217,6 @@ func (c *Client) RunBenchmark(ip string, llmIp string, engineType string, vllmPo
 		logger.Error().Int("status_code", resp.StatusCode).Str("status", resp.Status).Str("body", bodyStr).Msg("Run benchmark request failed")
 		return fmt.Errorf("failed to run benchmark: %s - %s", resp.Status, bodyStr)
 	}
-
 	return nil
 }
 
@@ -229,10 +226,7 @@ func (c *Client) GetResults(ip string, engineType string) (*results.Results, err
 		logger.Error().Interface("request", request).Msg("Failed to create request")
 		return nil, err
 	}
-
-	request.Header.Add("X-API-Key", c.APIKey)
-
-	resp, err := c.httpClient.Do(request)
+	resp, err := c.do(request)
 
 	if err != nil {
 		logger.Error().Interface("request", resp).Msg("Failed to get results")
@@ -276,10 +270,7 @@ func (c *Client) GetLogs(ip string, logsType string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	request.Header.Add("X-API-Key", c.APIKey)
-
-	resp, err := c.httpClient.Do(request)
+	resp, err := c.do(request)
 	if err != nil {
 		return "", err
 	}

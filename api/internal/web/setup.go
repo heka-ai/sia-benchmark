@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/heka-ai/benchmark-api/scripts"
@@ -53,46 +54,49 @@ func (s *HttpServer) generateSetupRouter(router *gin.Engine) {
 		}
 
 		cmd := exec.Command("bash", tmpScript.Name())
-
-		stderr, err := cmd.StderrPipe()
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-
-		stdout, err := cmd.StdoutPipe()
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-
+		stderr, _ := cmd.StderrPipe()
+		stdout, _ := cmd.StdoutPipe()
 		if err := cmd.Start(); err != nil {
-			logger.Error().Err(err).Msg("Failed to start setup script")
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
+		lines := make(chan string)
+		var wg sync.WaitGroup
+		wg.Add(2)
 		go func() {
+			defer wg.Done()
 			scanner := bufio.NewScanner(stdout)
 			for scanner.Scan() {
-				logger.Info().Str("setup", setupType).Msg(scanner.Text())
+				lines <- scanner.Text()
 			}
 		}()
-
 		go func() {
+			defer wg.Done()
 			scanner := bufio.NewScanner(stderr)
 			for scanner.Scan() {
-				logger.Warn().Str("setup", setupType).Msg(scanner.Text())
+				lines <- "stderr: " + scanner.Text()
 			}
 		}()
+		go func() { wg.Wait(); close(lines) }()
 
-		if err := cmd.Wait(); err != nil {
-			logger.Error().Err(err).Msg("Setup script failed")
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "setup failed: " + err.Error()})
-			return
+		c.Header("Content-Type", "text/plain; charset=utf-8")
+		flusher, _ := c.Writer.(http.Flusher)
+		for line := range lines {
+			c.Writer.Write([]byte(line + "\n"))
+			if flusher != nil {
+				flusher.Flush()
+			}
 		}
 
-		logger.Info().Str("type", setupType).Msg("Setup completed successfully")
-		c.JSON(http.StatusOK, gin.H{"status": "ok", "type": setupType})
+		if err := cmd.Wait(); err != nil {
+			c.Writer.Write([]byte("error: " + err.Error() + "\n"))
+			if flusher != nil {
+				flusher.Flush()
+			}
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		c.Status(http.StatusOK)
 	})
 }
