@@ -18,7 +18,7 @@ func ConnectionCmd() *cobra.Command {
 	}
 }
 
-// test the connection to the two instances
+// test the connection to the created instance(s); only checks instances that exist
 func connect() {
 	logger.Info().Msg("Trying to connect to the instances")
 	config.InitInfra()
@@ -27,29 +27,34 @@ func connect() {
 	cloud := cloud_generator.NewCloud(&c)
 	client := bench.NewClient(c.GeneralConfig.APIKey)
 
-	llmInstanceIP, err := cloud.GetLLMInstanceIP()
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Cannot get the LLM instance IP")
+	var llmIP, benchIP string
+	if ip, err := cloud.GetLLMInstanceIP(); err == nil {
+		llmIP = ip
+		logger.Info().Str("ip", llmIP).Msg("LLM instance IP")
+	} else {
+		logger.Debug().Err(err).Msg("No LLM instance found")
+	}
+	if ip, err := cloud.GetBenchInstanceIP(); err == nil {
+		benchIP = ip
+		logger.Info().Str("ip", benchIP).Msg("Bench instance IP")
+	} else {
+		logger.Debug().Err(err).Msg("No bench instance found")
 	}
 
-	benchInstanceIP, err := cloud.GetBenchInstanceIP()
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Cannot get the bench instance IP")
+	if llmIP == "" && benchIP == "" {
+		logger.Fatal().Msg("No instances found; create at least one with 'bench create'")
 	}
 
-	logger.Info().Str("ip", llmInstanceIP).Msg("LLM instance IP")
-	logger.Info().Str("ip", benchInstanceIP).Msg("Bench instance IP")
-
-	err = client.HealthCheck(llmInstanceIP)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Cannot connect to the LLM instance")
+	if llmIP != "" {
+		if err := client.HealthCheck(llmIP); err != nil {
+			logger.Fatal().Err(err).Str("ip", llmIP).Msg("Cannot connect to the LLM instance")
+		}
+		logger.Info().Str("ip", llmIP).Msg("LLM instance connected")
 	}
-	logger.Info().Str("ip", llmInstanceIP).Msg("LLM instance connected")
-
-	err = client.HealthCheck(benchInstanceIP)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Cannot connect to the bench instance")
+	if benchIP != "" {
+		if err := client.HealthCheck(benchIP); err != nil {
+			logger.Fatal().Err(err).Str("ip", benchIP).Msg("Cannot connect to the bench instance")
+		}
+		logger.Info().Str("ip", benchIP).Msg("Bench instance connected")
 	}
-
-	logger.Info().Str("ip", benchInstanceIP).Msg("Bench instance connected")
 }

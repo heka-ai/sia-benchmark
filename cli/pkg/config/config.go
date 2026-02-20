@@ -153,8 +153,7 @@ type AWSConfig struct {
 
 	ProfileName string `mapstructure:"profile_name" validate:"required_if=AWSAccessKey false"`
 
-	GPU_AMI string `mapstructure:"gpu_ami" validate:"required"`
-	CPU_AMI string `mapstructure:"cpu_ami" validate:"required"`
+	AMI string `mapstructure:"ami" validate:"required"`
 }
 
 type GCPConfig struct {
@@ -310,11 +309,8 @@ func resolveBenchmarkScriptPath(conf *Config) string {
 	}
 	// 3) candidates relative to current working dir
 	candidates := []string{
-		"instance-builder/aws/ec2/cpu/benchmark.py",
-		"./instance-builder/aws/ec2/cpu/benchmark.py",
 		"benchmark.py",
 		"./benchmark.py",
-		"/home/ubuntu/ec2/cpu/benchmark.py",
 	}
 	for _, c := range candidates {
 		abs, err := filepath.Abs(c)

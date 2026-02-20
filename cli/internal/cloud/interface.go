@@ -11,14 +11,8 @@ type Cloud interface {
 	// Validate the cloud credentials
 	ValidateCredentials() error
 
-	// Create the two instances needed for the benchmark
-	Create() error
-
-	// Create the LLM instance
-	CreateLLMInstance() error
-
-	// Create the CPU instance
-	CreateBenchInstance() error
+	// Create instances. createLLM and createBench control which to create; both true = both.
+	Create(createLLM, createBench bool) error
 
 	// Destroy the instances
 	Destroy() error

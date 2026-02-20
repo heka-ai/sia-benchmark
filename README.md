@@ -75,26 +75,11 @@ graph LR
     I --> J[End]
 ```
 
-## Ready to use Instance Machine
-
-We provide ready to use instance image on each supported cloud provider. These have been built using the `instance-builder/build_aws_ami.sh` script, they are published by Sia and are officials.
-
-### AWS
-
-We have already built AMIs on AWS, these AMIs are ready to run the benchmark.
-
-| Region    | Instance Type | AMI                   |
-| --------- | ------------- | --------------------- |
-| us-east-1 | CPU           | ami-09cba9350fc25f2a5 |
-| us-east-1 | LLM           | ami-0cd317320985b1898 |
-
 ## Roadmap
 
-- [ ] Publish the AMIs on major AWS Regions
 - [ ] Test with EC2 on the same rack
 - [ ] Local provider
 - [ ] Use inferentia
-- [ ] Integrate the instance building in the CLI
 - [ ] Run benchmarks on Scaleway
 - [ ] Run benchmarks on GCP
 - [ ] Use Ollama

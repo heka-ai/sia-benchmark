@@ -36,23 +36,29 @@ const (
 )
 
 func (c *Client) WaitForInstances(benchIP, llmIP string) error {
-	cpuDone := false
-	llmDone := false
+	if benchIP == "" && llmIP == "" {
+		return nil
+	}
+	cpuDone := benchIP == ""
+	llmDone := llmIP == ""
 
 	for i := 0; i < maxIterations && (!cpuDone || !llmDone); i++ {
-		err := c.HealthCheck(benchIP)
-		if err == nil {
-			cpuDone = true
+		if benchIP != "" {
+			if err := c.HealthCheck(benchIP); err == nil {
+				cpuDone = true
+			}
 		}
-
-		err = c.HealthCheck(llmIP)
-		if err == nil {
-			llmDone = true
+		if llmIP != "" {
+			if err := c.HealthCheck(llmIP); err == nil {
+				llmDone = true
+			}
 		}
-
 		time.Sleep(waitInterval)
 	}
 
+	if cpuDone && llmDone {
+		return nil
+	}
 	return fmt.Errorf("instances are not running after %d iterations", maxIterations)
 }
 
@@ -82,6 +88,30 @@ func (c *Client) Deploy(ip string, engine string, port int) error {
 		}
 		logger.Error().Int("status_code", resp.StatusCode).Str("status", resp.Status).Str("body", bodyStr).Msg("Deploy request failed")
 		return fmt.Errorf("failed to deploy: %s - %s", resp.Status, bodyStr)
+	}
+
+	return nil
+}
+
+func (c *Client) SetupInstance(ip string, setupType string) error {
+	request, err := http.NewRequest("POST", fmt.Sprintf("http://%s:8001/setup?type=%s", ip, setupType), nil)
+	if err != nil {
+		return err
+	}
+
+	request.Header.Add("X-API-Key", c.APIKey)
+
+	c.httpClient.Timeout = 30 * time.Minute
+	resp, err := c.httpClient.Do(request)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyStr := strings.TrimSpace(string(bodyBytes))
+		return fmt.Errorf("setup failed (%s): %s", resp.Status, bodyStr)
 	}
 
 	return nil

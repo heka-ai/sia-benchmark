@@ -12,46 +12,57 @@ func InstanceCmd() *cobra.Command {
 		Use:   "create",
 		Short: "Create the instance to run the benchmark",
 		Run: func(cmd *cobra.Command, args []string) {
-			wait, err := cmd.Flags().GetBool("wait")
-			if err != nil {
-				logger.Error().Err(err).Msg("Failed to get wait flag")
-				return
-			}
+			wait, _ := cmd.Flags().GetBool("wait")
+			llm, _ := cmd.Flags().GetBool("llm")
+			bench, _ := cmd.Flags().GetBool("benchmark")
 
-			create(wait)
+			// No flags → both. --llm only → LLM. --benchmark only → benchmark. Both flags → both.
+			createLLM := llm || !bench
+			createBench := bench || !llm
+
+			create(createLLM, createBench, wait)
 		},
 	}
 
 	command.Flags().BoolP("wait", "w", false, "Wait for the instances to be ready")
+	command.Flags().Bool("llm", false, "Create only the LLM (GPU) instance")
+	command.Flags().Bool("benchmark", false, "Create only the benchmark (CPU) instance")
 
 	return command
 }
 
-func create(wait bool) {
-	logger.Info().Msg("Creating the instances to run the benchmark")
+func create(createLLM, createBench, wait bool) {
+	logger.Info().Bool("llm", createLLM).Bool("benchmark", createBench).Msg("Creating instances")
 	config.InitInfra()
 
 	c := config.GetConfig()
 
 	cloud := cloud_generator.NewCloud(&c)
-	cloud.Create()
+	if err := cloud.Create(createLLM, createBench); err != nil {
+		logger.Fatal().Err(err).Msg("Create failed")
+	}
 
 	if wait {
 		logger.Info().Msg("Waiting for the instances to be ready")
-		bench := bench.NewClient(c.GeneralConfig.APIKey)
+		client := bench.NewClient(c.GeneralConfig.APIKey)
 
-		benchIP, err := cloud.GetBenchInstanceIP()
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Failed to get the bench instance IP")
+		var benchIP, llmIP string
+		if createBench {
+			var err error
+			benchIP, err = cloud.GetBenchInstanceIP()
+			if err != nil {
+				logger.Fatal().Err(err).Msg("Failed to get the bench instance IP")
+			}
+		}
+		if createLLM {
+			var err error
+			llmIP, err = cloud.GetLLMInstanceIP()
+			if err != nil {
+				logger.Fatal().Err(err).Msg("Failed to get the LLM instance IP")
+			}
 		}
 
-		llmIP, err := cloud.GetLLMInstanceIP()
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Failed to get the LLM instance IP")
-		}
-
-		bench.WaitForInstances(benchIP, llmIP)
-
+		client.WaitForInstances(benchIP, llmIP)
 		logger.Info().Msg("Instances are ready")
 	}
 }

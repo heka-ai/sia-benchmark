@@ -77,7 +77,7 @@ func (c *AWSClient) validateCredentials() error {
 	}
 
 	// Validate permissions by attempting a DryRun of RunInstances only
-	err := c.createInstance(c.config.AWSConfig.CPUInstanceType, true, c.config.AWSConfig.GPU_AMI, []types.Tag{}, "")
+	err := c.createInstance(c.config.AWSConfig.CPUInstanceType, true, c.config.AWSConfig.AMI, []types.Tag{}, "")
 	if err != nil {
 		logger.Error().Err(err).Msg("Cannot perform EC2 RunInstances dry-run")
 		return err

@@ -20,7 +20,7 @@ func RootCmd() *cobra.Command {
 	rootCmd.AddCommand(BenchCmd())
 	rootCmd.AddCommand(ResultsCmd())
 	rootCmd.AddCommand(DestroyCmd())
-	rootCmd.AddCommand(InstanceBuildCmd())
+	rootCmd.AddCommand(SetupInstanceCmd())
 	rootCmd.AddCommand(LogsCmd())
 
 	// Make config a persistent flag so subcommands accept it

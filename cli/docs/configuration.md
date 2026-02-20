@@ -19,8 +19,7 @@ Define AWS-specific settings in the `[aws]` section:
 | Parameter                | Type   | Description                                | Required |
 | ------------------------ | ------ | ------------------------------------------ | -------- |
 | `region`                 | String | AWS region where resources will be created | Yes      |
-| `gpu_ami`                | String | AMI ID for GPU instances                   | Yes      |
-| `cpu_ami`                | String | AMI ID for CPU instances                   | Yes      |
+| `ami`                    | String | Base AMI ID (stock Ubuntu)                 | Yes      |
 | `instance_type`          | String | Instance type for the model server         | Yes      |
 | `launcher_instance_type` | String | Instance type for the benchmark runner     | Yes      |
 | `profile_name`           | String | AWS profile name from your AWS credentials | Yes\*    |
@@ -34,8 +33,7 @@ Example:
 ```toml
 [aws]
 region = "us-east-1"
-gpu_ami = "ami-072c3e2520d9af5fa"
-cpu_ami = "ami-04f3f32777c02a5b3"
+ami = "ami-0e1bed4f06a3b463d"
 instance_type = "g4dn.xlarge"
 launcher_instance_type = "t3.micro"
 profile_name = "my-aws-profile"
@@ -103,8 +101,7 @@ inference_engine = "vllm"
 
 [aws]
 region = "us-east-1"
-gpu_ami = "ami-072c3e2520d9af5fa"
-cpu_ami = "ami-04f3f32777c02a5b3"
+ami = "ami-0e1bed4f06a3b463d"
 instance_type = "g4dn.xlarge"
 launcher_instance_type = "t3.micro"
 profile_name = "my-aws-profile"

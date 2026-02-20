@@ -29,8 +29,7 @@ provider = "aws"
 
 [aws]
 region = "us-east-1"
-gpu_ami = "ami-072c3e2520d9af5fa"
-cpu_ami = "ami-04f3f32777c02a5b3"
+ami = "ami-0e1bed4f06a3b463d"
 instance_type = "g4dn.xlarge"
 launcher_instance_type = "t3.micro"
 
@@ -67,10 +66,7 @@ AWS supports two authentication methods:
 
 ### AMI Selection
 
-You need to specify AMIs for both GPU and CPU instances:
-
-- `gpu_ami`: The AMI used for the model server (should include CUDA and other GPU dependencies)
-- `cpu_ami`: The AMI used for the benchmark runner
+Specify a single base AMI (stock Ubuntu 22.04 LTS) via `ami`. Both GPU and CPU instances boot from the same image; dependencies are installed at runtime via `bench setup-instance`.
 
 ## GCP (Google Cloud Platform)
 

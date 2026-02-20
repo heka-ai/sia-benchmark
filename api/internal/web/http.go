@@ -60,7 +60,7 @@ func (s *HttpServer) createRouter() *gin.Engine {
 		})
 	})
 
-	// generate the vllm routes
+	s.generateSetupRouter(router)
 	s.generateVLLMRouter(router)
 	s.generateBenchRouter(router)
 

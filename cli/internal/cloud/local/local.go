@@ -165,7 +165,7 @@ func queryTegrastats() ([]gpuInfo, error) {
 	return []gpuInfo{{name: name, memory: memTotal}}, nil
 }
 
-func (c *LocalClient) Create() error {
+func (c *LocalClient) Create(createLLM, createBench bool) error {
 	// Ensure the local API server is running on :8001
 	client := &http.Client{Timeout: 2 * time.Second}
 	if resp, err := client.Get("http://127.0.0.1:8001/health"); err == nil {
@@ -222,14 +222,6 @@ func (c *LocalClient) Create() error {
 	}
 
 	return errors.New("local provider: API server failed to start on :8001 within timeout")
-}
-func (c *LocalClient) CreateLLMInstance() error {
-	logger.Warn().Msg("Local provider: LLM instance creation is a no-op")
-	return nil
-}
-func (c *LocalClient) CreateBenchInstance() error {
-	logger.Warn().Msg("Local provider: Bench instance creation is a no-op")
-	return nil
 }
 func (c *LocalClient) Destroy() error {
 	// Try to stop API server on :8001

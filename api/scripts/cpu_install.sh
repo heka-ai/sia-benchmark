@@ -17,6 +17,6 @@ sudo -u ubuntu bash -c "cd /home/ubuntu && source /home/ubuntu/.local/bin/env &&
     uv python install 3.12 && \
     uv python pin 3.12 && \
     uv venv && \
-    uv pip install -r /home/ubuntu/ec2/cpu/requirements.txt"
+    uv pip install -r /tmp/bench-requirements.txt"
 
 echo "Installation complete"

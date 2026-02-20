@@ -45,8 +45,7 @@ inference_engine = "vllm"
 
 [aws]
 region = "us-east-1"
-gpu_ami = "ami-072c3e2520d9af5fa"  # AMI with GPU support
-cpu_ami = "ami-04f3f32777c02a5b3"  # Standard CPU AMI
+ami = "ami-0e1bed4f06a3b463d"       # Stock Ubuntu 22.04 LTS
 instance_type = "g4dn.xlarge"      # GPU instance for model
 launcher_instance_type = "t3.micro" # Instance for sending requests
 
