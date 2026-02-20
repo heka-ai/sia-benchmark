@@ -33,6 +33,12 @@ func InitWithExclusions(excludedSections []string) {
 	InitConfig(excludedSections)
 }
 
+
+// InitInfra initializes config for infrastructure commands only.
+func InitInfra() {
+	InitConfig([]string{"benchmark"})
+}
+
 func InitFlags() {}
 
 func GetConfig() Config {
@@ -102,11 +108,6 @@ func InitConfig(excludedSections []string) {
 	} else if len(excludedSections) > 0 {
 		logger.Info().Msg("Validating local section")
 	}
-	if excludedSet["instance"] {
-		localConfig.InstanceConfig = nil
-	} else if len(excludedSections) > 0 {
-		logger.Info().Msg("Validating instance section")
-	}
 
 	// Validate config
 	validate := validator.New()
@@ -120,7 +121,6 @@ func InitConfig(excludedSections []string) {
 			"vllmconfig":      "vllm",
 			"awsconfig":       "aws",
 			"localconfig":     "local",
-			"instanceconfig":  "instance",
 		}
 
 		var filteredErrors []validator.FieldError

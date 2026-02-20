@@ -34,7 +34,7 @@ func DeployCmd() *cobra.Command {
 func deploy(wait bool) {
 	logger.Info().Msg("Deploying and starting the LLM on the GPU instance")
 
-	config.Init()
+	config.InitInfra()
 	c := config.GetConfig()
 
 	cloud := cloud_generator.NewCloud(&c)
@@ -43,8 +43,10 @@ func deploy(wait bool) {
 		logger.Fatal().Err(err).Msg("Cannot get the LLM instance IP")
 	}
 
-	// Use port from config instead of flag
-	port := c.BenchmarkConfig.EnginePort
+	port := 8000
+	if c.BenchmarkConfig != nil && c.BenchmarkConfig.EnginePort > 0 {
+		port = c.BenchmarkConfig.EnginePort
+	}
 
 	llmClient := bench.NewClient(c.GeneralConfig.APIKey)
 	err = llmClient.Deploy(llmInstanceIP, c.GeneralConfig.InferenceEngine, port)

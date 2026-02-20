@@ -57,9 +57,6 @@ profile_name = "my-aws-profile"
 
 [vllm]
 model = "mistralai/Mistral-7B-v0.1"
-
-[instance]
-health_check = "/health"
 ```
 
 ### Validating Configuration

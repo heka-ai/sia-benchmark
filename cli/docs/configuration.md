@@ -94,21 +94,6 @@ dtype = "bfloat16"
 max_model_len = 4096
 ```
 
-## Instance Configuration
-
-Define instance-related settings in the `[instance]` section:
-
-| Parameter      | Type   | Description                     | Required |
-| -------------- | ------ | ------------------------------- | -------- |
-| `health_check` | String | HTTP endpoint for health checks | Yes      |
-
-Example:
-
-```toml
-[instance]
-health_check = "/health"
-```
-
 ## Full Configuration Example
 
 ```toml
@@ -130,7 +115,4 @@ task = "generate"
 trust_remote_code = true
 dtype = "bfloat16"
 max_model_len = 4096
-
-[instance]
-health_check = "/health"
 ```

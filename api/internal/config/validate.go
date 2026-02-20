@@ -54,8 +54,8 @@ func ReadConfig() *config.Config {
 		}
 	}
 
-	// Delegate reading & validation to CLI package
-	config.InitConfig(nil)
+	// Deploy/infrastructure API startup should not require benchmark section.
+	config.InitInfra()
 	c := config.GetConfig()
 	logger.Info().Interface("config", c).Msgf("Config validated successfully")
 	return &c

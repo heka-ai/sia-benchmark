@@ -56,16 +56,23 @@ func (v *VLLM) GetLogsArchive() []string {
 }
 
 func (v *VLLM) Start(ctx context.Context) error {
-	port := v.config.GetConfig().BenchmarkConfig.EnginePort
-	logger.Info().Str("model", v.config.GetConfig().VLLMConfig.Model).Str("token", v.config.GetConfig().BenchmarkConfig.Token).Msg("Starting the VLLM service")
+	cfg := v.config.GetConfig()
+	hfToken := ""
+	if cfg.BenchmarkConfig != nil && strings.TrimSpace(cfg.BenchmarkConfig.Token) != "" {
+		hfToken = strings.TrimSpace(cfg.BenchmarkConfig.Token)
+	} else {
+		hfToken = strings.TrimSpace(os.Getenv("HF_TOKEN"))
+	}
+	if hfToken == "" {
+		logger.Warn().Msg("Hugging Face token is empty; set benchmark.token or HF_TOKEN before deploy for gated/private models")
+	}
 
-	localArgs, err := cliConfig.GenerateVLLMCommand(v.config.GetConfig().VLLMConfig)
+	logger.Info().Str("model", cfg.VLLMConfig.Model).Msg("Starting the VLLM service")
+
+	localArgs, err := cliConfig.GenerateVLLMCommand(cfg.VLLMConfig)
 	if err != nil {
 		return err
 	}
-
-	// Inject the port flag for vllm serve.
-	localArgs = append(localArgs, "--port", fmt.Sprintf("%d", port))
 
 	logger.Info().Str("command", "uv run vllm "+strings.Join(localArgs, " ")).Msg("Launching VLLM with the following command")
 
@@ -80,7 +87,7 @@ func (v *VLLM) Start(ctx context.Context) error {
 
 	v.cmd = exec.CommandContext(ctx, uvBin, uvArgs...)
 	v.cmd.Env = append(os.Environ(),
-		"HF_TOKEN="+v.config.GetConfig().BenchmarkConfig.Token,
+		"HF_TOKEN="+hfToken,
 		"HF_HUB_ENABLE_HF_TRANSFER=1",
 	)
 
