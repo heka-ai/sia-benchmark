@@ -35,7 +35,7 @@ sudo -u ubuntu bash -c '
   # causing "multiple values for keyword argument 'disable'" when DisabledTqdm does super(..., disable=True).
   # Pin huggingface_hub to <1.1 to use the pre-bytes_progress code path that does not pass disable= to tqdm_class.
   # TODO : Upgrade vllm. HF<1.1 is too slow for snapshot_download.
-  uv pip install "huggingface_hub>=0.20,<1.1" vllm==0.10.2 --torch-backend=auto --index-strategy unsafe-best-match
+  uv pip install "huggingface_hub>=0.20,<1.1" hf_transfer vllm==0.10.2 --torch-backend=auto --index-strategy unsafe-best-match
 
   echo "--------------------------------------------------"
   echo "vLLM and dependencies installed successfully"
