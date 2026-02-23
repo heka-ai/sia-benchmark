@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -55,28 +56,36 @@ func (v *VLLM) GetLogsArchive() []string {
 	return v.logsArchive
 }
 
+func resolveHFToken(cfg *apiConfig.APIConfig) string {
+	c := cfg.GetConfig()
+	if c.BenchmarkConfig != nil {
+		if s := strings.TrimSpace(c.BenchmarkConfig.Token); s != "" {
+			return s
+		}
+	}
+	if s := strings.TrimSpace(os.Getenv("HF_TOKEN")); s != "" {
+		return s
+	}
+	home := os.Getenv("HOME")
+	if home == "" {
+		home = "/home/ubuntu"
+	}
+	b, err := os.ReadFile(filepath.Join(home, ".benchrc"))
+	if err != nil {
+		return ""
+	}
+	for _, line := range strings.Split(string(b), "\n") {
+		s := strings.TrimSpace(line)
+		if strings.HasPrefix(s, "HF_TOKEN=") {
+			return strings.TrimSpace(strings.TrimPrefix(s, "HF_TOKEN="))
+		}
+	}
+	return ""
+}
+
 func (v *VLLM) Start(ctx context.Context) error {
 	cfg := v.config.GetConfig()
-	hfToken := ""
-	if cfg.BenchmarkConfig != nil && strings.TrimSpace(cfg.BenchmarkConfig.Token) != "" {
-		hfToken = strings.TrimSpace(cfg.BenchmarkConfig.Token)
-	} else {
-		hfToken = strings.TrimSpace(os.Getenv("HF_TOKEN"))
-	}
-	if hfToken == "" {
-		home := os.Getenv("HOME")
-		if home == "" {
-			home = "/home/ubuntu"
-		}
-		if b, _ := os.ReadFile(home + "/.benchrc"); b != nil {
-			for _, line := range strings.Split(string(b), "\n") {
-				if s := strings.TrimSpace(line); strings.HasPrefix(s, "HF_TOKEN=") {
-					hfToken = strings.TrimSpace(s[9:])
-					break
-				}
-			}
-		}
-	}
+	hfToken := resolveHFToken(v.config)
 	if hfToken == "" {
 		logger.Warn().Msg("Hugging Face token is empty; set benchmark.token or HF_TOKEN before deploy for gated/private models")
 	}
@@ -86,6 +95,9 @@ func (v *VLLM) Start(ctx context.Context) error {
 	localArgs, err := cliConfig.GenerateVLLMCommand(cfg.VLLMConfig)
 	if err != nil {
 		return err
+	}
+	if hfToken != "" {
+		localArgs = append(localArgs, "--hf-token", hfToken)
 	}
 
 	logger.Info().Str("command", "uv run vllm "+strings.Join(localArgs, " ")).Msg("Launching VLLM with the following command")
